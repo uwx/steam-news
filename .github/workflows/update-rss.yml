@@ -48,6 +48,10 @@ jobs:
           # Set this option if you want the action to update environment variables.
           # update-environment: # optional, default is true
           
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -r requirements.txt
+          
       - name: Add profile games
         run: |
           ./SteamNews.py --first-run --add-profile-games _maxine
