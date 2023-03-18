@@ -133,7 +133,9 @@ def getAllRecentNews(newsids: dict, db: NewsDatabase):
     cachehits = 0
     newhits = 0
     fails = 0
+    idx = 0
     for aid, name in newsids.items():
+        idx += 1
         if db.is_news_cached(aid):
             logger.info('Cache for %d: %s still valid!', aid, name)
             cachehits += 1
@@ -143,13 +145,13 @@ def getAllRecentNews(newsids: dict, db: NewsDatabase):
                 cur_entries = saveRecentNews(news, db)
                 newhits += 1
                 if cur_entries:
-                    logger.info('Fetched %d: %s OK; %d current items', aid, name, cur_entries)
+                    logger.info('[%d/%d] Fetched %d: %s OK; %d current items', idx, len(newsids), aid, name, cur_entries)
                 else:
-                    logger.info('Fetched %d: %s OK; nothing current', aid, name)
+                    logger.info('[%d/%d] Fetched %d: %s OK; nothing current', idx, len(newsids), aid, name)
                 time.sleep(0.25)
             else:
                 fails += 1
-                logger.error('%d: %s fetch error: %s', aid, name, news['error'])
+                logger.error('[%d/%d] %d: %s fetch error: %s', idx, len(newsids), aid, name, news['error'])
                 time.sleep(1)
 
     logger.info('Run complete. %d cached, %d fetched, %d failed',
