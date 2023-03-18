@@ -1,0 +1,88 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "master" branch
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  
+  schedule:
+    - cron: 0 0 * * *
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4.5.0
+        with:
+          # Version range or exact version of Python or PyPy to use, using SemVer's version range syntax. Reads from .python-version if unset.
+          python-version: '*' # optional
+          # File containing the Python version to use. Example: .python-version
+          # python-version-file: # optional
+          # Used to specify a package manager for caching in the default directory. Supported values: pip, pipenv, poetry.
+          cache: pip # optional
+          # The target architecture (x86, x64) of the Python or PyPy interpreter.
+          # architecture: # optional
+          # Set this option if you want the action to check for the latest available version that satisfies the version spec.
+          check-latest: true # optional
+          # The token used to authenticate when fetching Python distributions from https://github.com/actions/python-versions. When running this action on github.com, the default value is sufficient. When running on GHES, you can pass a personal access token for github.com if you are experiencing rate limiting.
+          # token: # optional, default is ${{ github.server_url == 'https://github.com' && github.token || '' }}
+          # Used to specify the path to dependency files. Supports wildcards or a list of file names for caching multiple dependencies.
+          # cache-dependency-path: # optional
+          # Set this option if you want the action to update environment variables.
+          # update-environment: # optional, default is true
+          
+      - name: Add profile games
+        run: |
+          ./SteamNews.py --first-run --add-profile-games _maxine
+
+      - name: Update RSS feed
+        run: |
+          mkdir _site
+          ./SteamNews.py --verbose --fetch --publish _site/steam_news.xml
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v1.0.7
+        with: {}
+          # Artifact name
+          # name: # optional, default is github-pages
+          # Path of the directory containing the static assets.
+          # path: # default is _site/
+          # Duration after which artifact will expire in days.
+          # retention-days: # optional, default is 1
+
+      - name: Deploy GitHub Pages site
+        uses: actions/deploy-pages@v2.0.0
+        with: {}
+          # Should this action only emit build telemetry instead of deploying the build artifact?
+          # emit_telemetry: # optional, default is false
+          # The status of the previous build.
+          # conclusion: # optional
+          # GitHub token
+          # token: # default is ${{ github.token }}
+          # Time in milliseconds after which to timeout and cancel the deployment (default: 10 minutes)
+          # timeout: # optional, default is 600000
+          # Maximum number of status report errors before cancelling a deployment (default: 10)
+          # error_count: # optional, default is 10
+          # Time in milliseconds between two deployment status report (default: 5 seconds)
+          # reporting_interval: # optional, default is 5000
+          # Name of the artifact to deploy
+          # artifact_name: # optional, default is github-pages
+          # Is this attempting to deploy a pull request as a GitHub Pages preview site? (NOTE: This feature is only in alpha currently and is not available to the public!)
+          # preview: # optional, default is false
