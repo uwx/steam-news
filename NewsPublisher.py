@@ -4,9 +4,11 @@ import logging
 from datetime import datetime, timezone
 import difflib
 from functools import partial
+from typing import cast
 
-import PyRSS2Gen
+import PyRSS2Gen as rss
 import bbcode
+from SteamNews import NewsItem
 
 from database import NewsDatabase
 
@@ -18,10 +20,10 @@ from database import NewsDatabase
 
 logger = logging.getLogger(__name__)
 
-def genRSSFeed(rssitems):
+def genRSSFeed(rssitems: list[rss.RSSItem]):
     pdate = datetime.now(timezone.utc)
-    lbdate = rssitems[0].pubDate
-    return PyRSS2Gen.RSS2(
+    lbdate = max(cast(datetime, x.pubDate) for x in rssitems)
+    return rss.RSS2(
         title='Steam Game News',
         link='http://store.steampowered.com/news/?feed=mygames',
         description='All of your Steam games\' news, combined!',
@@ -30,9 +32,11 @@ def genRSSFeed(rssitems):
         items=rssitems
     )  # TODO should ttl get a value?
 
+FEEDTYPE_HTML = 0
+FEEDTYPE_BBCODE = 1
 
-def rowToRSSItem(row, db: NewsDatabase):
-    if row['feed_type'] == 1:
+def rowToRSSItem(row: NewsItem, db: NewsDatabase):
+    if row['feed_type'] == FEEDTYPE_BBCODE:
         content = convertBBCodeToHTML(row['contents'])
     else:
         content = row['contents']
@@ -44,10 +48,8 @@ def rowToRSSItem(row, db: NewsDatabase):
     games = db.get_source_names_for_item(row['gid']) or ['Unknown?']
     rsstitle = row['title']
     if len(games) > 1:
-        rsstitle = '[Multiple] ' + rsstitle
-    elif (games[0] not in rsstitle and not
-            difflib.get_close_matches(games[0].lower(), rsstitle.lower().split(),
-                n=1, cutoff=0.8)):
+        rsstitle = '[Multiple] {}'.format(rsstitle)
+    elif games[0] not in rsstitle:
         rsstitle = '[{}] {}'.format(games[0], rsstitle)
     #else game title is in article title, do nothing
 
@@ -60,16 +62,19 @@ def rowToRSSItem(row, db: NewsDatabase):
         else:
             #shrug.
             source = row['feedname'] or 'Unknown Source'
-    sources = '<p><i>Via <b>{}</b> for {}</i></p>\n'.format(
-            source, ', '.join(games))
+    sources = '<p><i>Via <b>{}</b> for {}</i></p>\n'.format(source, ', '.join(games))
 
-    item = PyRSS2Gen.RSSItem(
+    item = rss.RSSItem(
         title=rsstitle,
         link=row['url'],
         description=sources + content,
         author=row['author'],
-        guid=PyRSS2Gen.Guid(row['gid'], isPermaLink=False),
-        pubDate=datetime.fromtimestamp(row['date'], timezone.utc)
+        guid=rss.Guid(row['gid'], isPermaLink=False),
+        pubDate=datetime.fromtimestamp(row['date'], timezone.utc),
+        categories=[
+            source
+        ],
+        source=len(games) == 1 and rss.Source(games[0], 'https://store.steampowered.com/app/{}/'.format(row['realappid'])) or None
     )  # omitted: categories, comments, enclosure, source
     return item
 
@@ -108,7 +113,7 @@ span.bb_spoiler:hover > span {
 }'''
 
 
-def convertBBCodeToHTML(text):
+def convertBBCodeToHTML(text: str):
     bb = bbcode.Parser()
 
     for tag in ('strike', 'table', 'tr', 'th', 'td', 'h1', 'h2', 'h3'):
@@ -144,16 +149,11 @@ IMG_REPLACEMENTS = {
     '{STEAM_CLAN_LOC_IMAGE}': 'https://cdn.akamai.steamstatic.com/steamcommunity/public/images/clans',
 }
 
-IMG = '<img style="display: inline-block; max-width: 100%;" src="{}"></img>'
-
-def render_img(tag_name, value, options, parent, context):
+def render_img(tag_name: str, value: str, options, parent, context):
     src = value
     for mark, replaced in IMG_REPLACEMENTS.items():
         src = src.replace(mark, replaced)
-    return IMG.format(src)
-
-
-YT_TAG = '<a rel="nofollow" href="https://youtu.be/{0}">https://youtu.be/{0}</a>'
+    return '<img style="display: inline-block; max-width: 100%;" src="{}"></img>'.format(src)
 
 def render_yt(tag_name, value, options, parent, context):
     # Youtube links in Steam posts look like
@@ -164,7 +164,7 @@ def render_yt(tag_name, value, options, parent, context):
         # grab everything between the '=' (options dict) and the ';'
         # TODO is there always a ;full component?
         yt_id = options['previewyoutube'][:options['previewyoutube'].index(';')]
-        return YT_TAG.format(yt_id)
+        return '<a rel="nofollow" href="https://youtu.be/{0}">https://youtu.be/{0}</a>'.format(yt_id)
     except (KeyError, ValueError):
         # TODO uhh... look at https://dcwatson.github.io/bbcode/formatters/ again
         return ''
@@ -172,9 +172,9 @@ def render_yt(tag_name, value, options, parent, context):
 def publish(db: NewsDatabase, output_path=None):
     if not output_path:
         output_path = 'steam_news.xml'
+
     logger.info('Generating RSS feed...')
-    row_func = partial(rowToRSSItem, db=db)
-    rssitems = list(map(row_func, db.get_news_rows()))
+    rssitems = list(rowToRSSItem(row, db) for row in db.get_news_rows())
     feed = genRSSFeed(rssitems)
     logger.info('Writing to %s...', output_path)
     with open(output_path, 'w') as f:
@@ -186,5 +186,5 @@ if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout,
             format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',
             level=logging.DEBUG)
-    with NewsDatabase() as db:
+    with NewsDatabase('SteamNews.db') as db:
         publish(db)
