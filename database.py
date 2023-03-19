@@ -93,8 +93,7 @@ class NewsDatabase:
             logger.info('Added %d new games to be fetched.', cur.rowcount)
 
     def get_games_like(self, name: str):
-        if not self.db:
-            raise TypeError('DB not initialized')
+        self.new_method()
 
         if name := name.strip().strip('%'):
             n = f'%{name}%'
@@ -105,6 +104,10 @@ class NewsDatabase:
         else:
             c = self.db.execute('SELECT * FROM Games ORDER BY name')
         return c.fetchall()
+
+    def new_method(self):
+        if not self.db:
+            raise TypeError('DB not initialized')
 
     def disable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:

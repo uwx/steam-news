@@ -29,7 +29,8 @@ def genRSSFeed(rssitems: list[rss.RSSItem]):
         description='All of your Steam games\' news, combined!',
         pubDate=pdate,
         lastBuildDate=lbdate,
-        items=rssitems
+        items=rssitems,
+        ttl=60*24,
     )  # TODO should ttl get a value?
 
 FEEDTYPE_HTML = 0
@@ -65,7 +66,7 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
     
     sources = f'<p><i>Via <b>{source}</b> for {", ".join(games)}</i></p>\n'
 
-    item = rss.RSSItem(
+    return rss.RSSItem(
         title=rsstitle,
         link=row['url'],
         description=sources + content,
@@ -75,9 +76,8 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
         categories=[
             source
         ],
-        source=len(games) == 1 and rss.Source(games[0], f'https://store.steampowered.com/app/{row["realappid"]}/') or None
+        source=len(games) == 1 and rss.Source(games[0], f'https://store.steampowered.com/app/{row["appid"]}/') or None
     )  # omitted: categories, comments, enclosure, source
-    return item
 
 # RE: BBCode http://bbcode.readthedocs.org/
 # note: feed_type is 1 for steam community announcements
@@ -111,7 +111,8 @@ span.bb_spoiler > span {
 
 span.bb_spoiler:hover > span {
 	visibility: visible;
-}'''
+}
+'''
 
 
 def convertBBCodeToHTML(text: str):
@@ -152,8 +153,8 @@ IMG_REPLACEMENTS = {
 
 def render_img(tag_name: str, value: str, options, parent, context):
     src = value
-    for mark, replaced in IMG_REPLACEMENTS.items():
-        src = src.replace(mark, replaced)
+    for find, replace in IMG_REPLACEMENTS.items():
+        src = src.replace(find, replace)
     return f'<img style="display: inline-block; max-width: 100%;" src="{src}"></img>'
 
 def render_yt(tag_name, value, options, parent, context):

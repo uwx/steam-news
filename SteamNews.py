@@ -168,10 +168,12 @@ def edit_fetch_games(name: str, db: NewsDatabase):
     games = db.get_games_like(name)
     before_on = set[int]()
     before_off = set[int]()
-    args = ['whiptail', '--title', 'Select games to fetch news for',
-            '--separate-output', '--checklist',
-            'Use arrow keys to move, Space to toggle, Tab to go to OK, ESC to cancel.',
-            '50', '100', '43', '--']
+    args = [
+        'whiptail', '--title', 'Select games to fetch news for',
+        '--separate-output', '--checklist',
+        'Use arrow keys to move, Space to toggle, Tab to go to OK, ESC to cancel.',
+        '50', '100', '43', '--'
+    ]
     for game in games:
         if game['shouldFetch']:
             before_on.add(game['appid'])
@@ -216,7 +218,7 @@ def main():
     parser.add_argument('--filter-feed-names')
     args = parser.parse_args()
 
-    lvl = logging.INFO if not args.verbose else logging.DEBUG
+    lvl = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         stream=sys.stdout,
         format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',
