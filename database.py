@@ -4,7 +4,7 @@ import time
 
 from typing import Iterable, Optional
 
-from SteamNews import NewsItem
+from SteamNewsTypes import NewsItem
 
 logger = logging.getLogger(__name__)
 
@@ -47,33 +47,34 @@ class NewsDatabase:
         #The indentation here is more for the benefit of the sqlite3 tool
         # than the python source... /shrug
         self.db.executescript('''
-CREATE TABLE Games(
-    appid INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    shouldFetch INTEGER NOT NULL DEFAULT 1);
-CREATE TABLE ExpireTimes(
-    appid INTEGER PRIMARY KEY
-        REFERENCES Games(appid) ON DELETE CASCADE ON UPDATE CASCADE,
-    unixseconds INTEGER NOT NULL DEFAULT 0);
-CREATE TABLE NewsItems(
-    gid TEXT NOT NULL PRIMARY KEY,
-    title TEXT NOT NULL,
-    url TEXT,
-    is_external_url INTEGER,
-    author TEXT,
-    contents TEXT,
-    feedlabel TEXT,
-    date INTEGER NOT NULL DEFAULT (strftime('%s')),
-    feedname TEXT,
-    feed_type INTEGER,
-    appid INTEGER NOT NULL);
-CREATE TABLE NewsSources(
-    gid TEXT NOT NULL
-        REFERENCES NewsItems(gid) ON DELETE CASCADE ON UPDATE CASCADE,
-    appid INTEGER NOT NULL
-        REFERENCES Games(appid) ON DELETE CASCADE ON UPDATE CASCADE,
-    PRIMARY KEY(gid, appid));
-CREATE INDEX NewsDateIdx ON NewsItems(date);''')
+            CREATE TABLE Games(
+                appid INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                shouldFetch INTEGER NOT NULL DEFAULT 1);
+            CREATE TABLE ExpireTimes(
+                appid INTEGER PRIMARY KEY
+                    REFERENCES Games(appid) ON DELETE CASCADE ON UPDATE CASCADE,
+                unixseconds INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE NewsItems(
+                gid TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                url TEXT,
+                is_external_url INTEGER,
+                author TEXT,
+                contents TEXT,
+                feedlabel TEXT,
+                date INTEGER NOT NULL DEFAULT (strftime('%s')),
+                feedname TEXT,
+                feed_type INTEGER,
+                appid INTEGER NOT NULL);
+            CREATE TABLE NewsSources(
+                gid TEXT NOT NULL
+                    REFERENCES NewsItems(gid) ON DELETE CASCADE ON UPDATE CASCADE,
+                appid INTEGER NOT NULL
+                    REFERENCES Games(appid) ON DELETE CASCADE ON UPDATE CASCADE,
+                PRIMARY KEY(gid, appid));
+            CREATE INDEX NewsDateIdx ON NewsItems(date);
+        ''')
 
         #having news item appid foreign key on games can break,
         # since the news appid might not be the one we fetched against
@@ -95,10 +96,8 @@ CREATE INDEX NewsDateIdx ON NewsItems(date);''')
         if not self.db:
             raise TypeError('DB not initialized')
 
-        #Since you can't do '%?%' in the SQL, do that here instead
-        name = name.strip().strip('%')
-        if name:
-            n = '%' + name + '%'
+        if name := name.strip().strip('%'):
+            n = f'%{name}%'
             c = self.db.execute('''
                 SELECT * FROM Games
                 WHERE name LIKE ? ORDER BY name
@@ -146,11 +145,9 @@ CREATE INDEX NewsDateIdx ON NewsItems(date);''')
         c = self.db.execute('SELECT unixseconds FROM ExpireTimes WHERE appid = ?',
                 (appid,))
         exptime = c.fetchone()
-        if exptime is None: #i.e. appid not found
-            return False
-        else:
-            #TODO maybe use datetime.timestamp() & now() instead?
-            return time.time() < exptime[0]
+
+        #TODO maybe use datetime.timestamp() & now() instead?
+        return exptime is not None and time.time() < exptime[0]
 
     def insert_news_item(self, ned: NewsItem):
         if not self.db:
@@ -189,4 +186,4 @@ CREATE INDEX NewsDateIdx ON NewsItems(date);''')
             WHERE gid = ? ORDER BY appid
         ''', (gid,))
         #fetchall gives a bunch of tuples, so we have to unpack them with a for loop...
-        return list(x[0] for x in c.fetchall())
+        return [x[0] for x in c.fetchall()]

@@ -8,7 +8,7 @@ from typing import cast
 
 import PyRSS2Gen as rss
 import bbcode
-from SteamNews import NewsItem
+from SteamNewsTypes import NewsItem
 
 from database import NewsDatabase
 
@@ -48,9 +48,9 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
     games = db.get_source_names_for_item(row['gid']) or ['Unknown?']
     rsstitle = row['title']
     if len(games) > 1:
-        rsstitle = '[Multiple] {}'.format(rsstitle)
+        rsstitle = f'[Multiple] {rsstitle}'
     elif games[0] not in rsstitle:
-        rsstitle = '[{}] {}'.format(games[0], rsstitle)
+        rsstitle = f'[{games[0]}] {rsstitle}'
     #else game title is in article title, do nothing
 
     source = row['feedlabel']
@@ -62,7 +62,8 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
         else:
             #shrug.
             source = row['feedname'] or 'Unknown Source'
-    sources = '<p><i>Via <b>{}</b> for {}</i></p>\n'.format(source, ', '.join(games))
+    
+    sources = f'<p><i>Via <b>{source}</b> for {", ".join(games)}</i></p>\n'
 
     item = rss.RSSItem(
         title=rsstitle,
@@ -74,7 +75,7 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
         categories=[
             source
         ],
-        source=len(games) == 1 and rss.Source(games[0], 'https://store.steampowered.com/app/{}/'.format(row['realappid'])) or None
+        source=len(games) == 1 and rss.Source(games[0], f'https://store.steampowered.com/app/{row["realappid"]}/') or None
     )  # omitted: categories, comments, enclosure, source
     return item
 
@@ -117,7 +118,7 @@ def convertBBCodeToHTML(text: str):
     bb = bbcode.Parser()
 
     for tag in ('strike', 'table', 'tr', 'th', 'td', 'h1', 'h2', 'h3'):
-        bb.add_simple_formatter(tag, '<{0}>%(value)s</{0}>'.format(tag))
+        bb.add_simple_formatter(tag, f'<{tag}>%(value)s</{tag}>')
 
     #bb.add_simple_formatter('img', '<img style="display: inline-block; max-width: 100%%;" src="%(value)s"></img>', strip=True, replace_links=False)
     bb.add_formatter('img', render_img, strip=True, replace_links=False)
@@ -153,7 +154,7 @@ def render_img(tag_name: str, value: str, options, parent, context):
     src = value
     for mark, replaced in IMG_REPLACEMENTS.items():
         src = src.replace(mark, replaced)
-    return '<img style="display: inline-block; max-width: 100%;" src="{}"></img>'.format(src)
+    return f'<img style="display: inline-block; max-width: 100%;" src="{src}"></img>'
 
 def render_yt(tag_name, value, options, parent, context):
     # Youtube links in Steam posts look like
@@ -174,7 +175,7 @@ def publish(db: NewsDatabase, output_path=None):
         output_path = 'steam_news.xml'
 
     logger.info('Generating RSS feed...')
-    rssitems = list(rowToRSSItem(row, db) for row in db.get_news_rows())
+    rssitems = [rowToRSSItem(row, db) for row in db.get_news_rows()]
     feed = genRSSFeed(rssitems)
     logger.info('Writing to %s...', output_path)
     with open(output_path, 'w') as f:

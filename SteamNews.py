@@ -13,12 +13,13 @@ import logging
 import subprocess
 import sys
 import time
-from typing import NewType, TypedDict, cast
+from typing import cast
 from urllib.request import urlopen
 from urllib.error import HTTPError
 from xml.dom.minicompat import NodeList
 from xml.dom import minidom
 from xml.dom.minidom import Document, Element, Node, Text
+from SteamNewsTypes import News, NewsError, NewsItem
 
 from database import NewsDatabase
 from NewsPublisher import publish
@@ -45,9 +46,9 @@ STEAM_APPIDS = {
 def seed_database(idOrVanity: str, db: NewsDatabase):
     try:
         sid = int(idOrVanity)
-        url = 'https://steamcommunity.com/profiles/{}/games?xml=1'.format(sid)
+        url = f'https://steamcommunity.com/profiles/{sid}/games?xml=1'
     except ValueError:  # it's probably a vanity str
-        url = 'https://steamcommunity.com/id/{}/games?xml=1'.format(idOrVanity)
+        url = f'https://steamcommunity.com/id/{idOrVanity}/games?xml=1'
 
     newsids = getAppIDsFromURL(url)
     #Also add the hardcoded ones...
@@ -78,10 +79,7 @@ def getAppIDsFromURL(url: str):
 
 def getExpiresDTFromResponse(response: HTTPResponse):
     exp = response.getheader('Expires')
-    if exp is None:
-        return datetime.now(timezone.utc)
-    else:
-        return parseExpiresAsDT(exp)
+    return datetime.now(timezone.utc) if exp is None else parseExpiresAsDT(exp)
 
 
 def parseExpiresAsDT(exp: str):
@@ -95,36 +93,9 @@ def parseExpiresAsDT(exp: str):
 # I shorthanded "news element dict" to distinguish it as a single item
 # vs. 'news' which is typically used for the entire JSON payload Steam gives us
 
-class NewsItem(TypedDict):
-    gid: str
-    title: str
-    url: str
-    is_external_url: bool
-    author: str
-    contents: str
-    feedlabel: str
-    date: int
-    feedname: str
-    feed_type: int # 0=HTML, 1=BBCODE
-    appid: int
-    tags: list[str]
-    realappid: int
-
-class AppNews(TypedDict):
-    appid: int
-    newsitems: list[NewsItem]
-
-class News(TypedDict):
-    appnews: AppNews
-    expires: int
-
-class NewsError(TypedDict):
-    error: str
-
 def getNewsForAppID(appid: int, filter_feed_names: str | None) -> News | NewsError:
     """Get news for the given appid as a dict"""
-    filter_feeds = filter_feed_names and '&feeds={}'.format(filter_feed_names) or ''
-    url = 'https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?format=json&maxlength=0&count=10&appid={}{}'.format(appid, filter_feeds)
+    url = f'https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?format=json&maxlength=0&count=10&appid={appid}{filter_feed_names and f"&feeds={filter_feed_names}" or ""}'
     try:
         response: HTTPResponse = urlopen(url)
         # Get value of 'expires' header as a datetime obj
@@ -139,7 +110,7 @@ def getNewsForAppID(appid: int, filter_feed_names: str | None) -> News | NewsErr
 
         return news
     except HTTPError as e:
-        return {'error': '{} {}'.format(e.code, e.reason)}
+        return {'error': f'{e.code} {e.reason}'}
 
 
 def isNewsOld(ned: NewsItem):
