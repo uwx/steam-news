@@ -76,7 +76,7 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
         categories=[
             source
         ],
-        source=len(games) == 1 and rss.Source(games[0], f'https://store.steampowered.com/app/{row["appid"]}/') or None
+        source=rss.Source(games[0], f'https://store.steampowered.com/app/{row["appid"]}/') if len(games) == 1 else None
     )  # omitted: categories, comments, enclosure, source
 
 # RE: BBCode http://bbcode.readthedocs.org/
@@ -124,16 +124,12 @@ def convertBBCodeToHTML(text: str):
     #bb.add_simple_formatter('img', '<img style="display: inline-block; max-width: 100%%;" src="%(value)s"></img>', strip=True, replace_links=False)
     bb.add_formatter('img', render_img, strip=True, replace_links=False)
 
-    bb.add_formatter('previewyoutube', render_yt,
-                     strip=True, replace_links=True)
+    bb.add_formatter('previewyoutube', render_yt, strip=True, replace_links=True)
 
     # The extra settings here are roughly based on the default formatters seen in the bbcode module source
-    bb.add_simple_formatter(
-        'noparse', '%(value)s', render_embedded=False, replace_cosmetic=False)  # see 'code'
-    bb.add_simple_formatter('olist', '<ol>%(value)s</ol>', transform_newlines=False,
-                            strip=True, swallow_trailing_newline=True)  # see 'list'
-    bb.add_simple_formatter('spoiler',
-            '<span style="color: #000000;background-color: #000000;padding: 0px 8px;">%(value)s</span>')  # see bbcode 's' & above css
+    bb.add_simple_formatter('noparse', '%(value)s', render_embedded=False, replace_cosmetic=False)  # see 'code'
+    bb.add_simple_formatter('olist', '<ol>%(value)s</ol>', transform_newlines=False, strip=True, swallow_trailing_newline=True)  # see 'list'
+    bb.add_simple_formatter('spoiler', '<span style="color: #000000;background-color: #000000;padding: 0px 8px;">%(value)s</span>')  # see bbcode 's' & above css
 
     return bb.format(text)
 
@@ -151,13 +147,13 @@ IMG_REPLACEMENTS = {
     '{STEAM_CLAN_LOC_IMAGE}': 'https://cdn.akamai.steamstatic.com/steamcommunity/public/images/clans',
 }
 
-def render_img(tag_name: str, value: str, options, parent, context):
+def render_img(tag_name: str, value: str, options: dict[str, str], parent, context: dict[str, str]):
     src = value
     for find, replace in IMG_REPLACEMENTS.items():
         src = src.replace(find, replace)
     return f'<img style="display: inline-block; max-width: 100%;" src="{src}"></img>'
 
-def render_yt(tag_name, value, options, parent, context):
+def render_yt(tag_name: str, value: str, options: dict[str, str], parent, context: dict[str, str]):
     # Youtube links in Steam posts look like
     # [previewyoutube=gJEgjiorUPo;full][/previewyoutube]
     # We *could* transform them into youtube embeds but
