@@ -72,7 +72,7 @@ jobs:
           
       - name: Add profile games
         run: |
-          ./SteamNews.py --first-run --add-profile-games _maxine
+          ./SteamNews.py --add-profile-games _maxine
 
       - name: Update RSS feed
         run: |

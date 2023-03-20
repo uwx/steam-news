@@ -10,6 +10,7 @@ from enum import Enum
 from http.client import HTTPResponse
 import json
 import logging
+from os import path
 import subprocess
 import sys
 import time
@@ -226,7 +227,7 @@ def main():
     )
 
     with NewsDatabase(args.db_path) as db:
-        if args.first_run:
+        if args.first_run or not path.exists('SteamNews.db'):
             db.first_run()
 
         if args.add_profile_games:
