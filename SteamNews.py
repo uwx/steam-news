@@ -227,7 +227,7 @@ def main():
     )
 
     with NewsDatabase(args.db_path) as db:
-        if args.first_run or not path.exists('SteamNews.db'):
+        if args.first_run or not path.exists(args.db_path):
             db.first_run()
 
         if args.add_profile_games:
