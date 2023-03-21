@@ -2,11 +2,15 @@ import sqlite3
 import logging
 import time
 
-from typing import Iterable, Optional
+from typing import Iterable, NamedTuple, Optional
 
 from SteamNewsTypes import NewsItem
 
 logger = logging.getLogger(__name__)
+
+class Game(NamedTuple):
+    name: str
+    appid: int
 
 class NewsDatabase:
     db: Optional[sqlite3.Connection]
@@ -93,7 +97,8 @@ class NewsDatabase:
             logger.info('Added %d new games to be fetched.', cur.rowcount)
 
     def get_games_like(self, name: str):
-        self.new_method()
+        if not self.db:
+            raise TypeError('DB not initialized')
 
         if name := name.strip().strip('%'):
             n = f'%{name}%'
@@ -104,10 +109,6 @@ class NewsDatabase:
         else:
             c = self.db.execute('SELECT * FROM Games ORDER BY name')
         return c.fetchall()
-
-    def new_method(self):
-        if not self.db:
-            raise TypeError('DB not initialized')
 
     def disable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:
@@ -138,15 +139,13 @@ class NewsDatabase:
             raise TypeError('DB not initialized')
 
         with self.db as db:
-            db.execute('INSERT OR REPLACE INTO ExpireTimes VALUES (?, ?)',
-                  (appid, expires))
+            db.execute('INSERT OR REPLACE INTO ExpireTimes VALUES (?, ?)', (appid, expires))
 
     def is_news_cached(self, appid: int):
         if not self.db:
             raise TypeError('DB not initialized')
 
-        c = self.db.execute('SELECT unixseconds FROM ExpireTimes WHERE appid = ?',
-                (appid,))
+        c = self.db.execute('SELECT unixseconds FROM ExpireTimes WHERE appid = ?', (appid,))
         exptime = c.fetchone()
 
         #TODO maybe use datetime.timestamp() & now() instead?
@@ -179,14 +178,14 @@ class NewsDatabase:
         ''')
         return c.fetchall()
 
-    def get_source_names_for_item(self, gid: str):
+    def get_source_names_and_appids_for_item(self, gid: str) -> list[Game]:
         if not self.db:
             raise TypeError('DB not initialized')
 
         c = self.db.execute('''
-            SELECT name
+            SELECT name, appid
             FROM NewsSources NATURAL JOIN Games
             WHERE gid = ? ORDER BY appid
         ''', (gid,))
-        #fetchall gives a bunch of tuples, so we have to unpack them with a for loop...
-        return [x[0] for x in c.fetchall()]
+        
+        return [Game(name, appid) for (name, appid) in c.fetchall()]

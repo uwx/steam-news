@@ -10,7 +10,7 @@ import PyRSS2Gen as rss
 import bbcode
 from SteamNewsTypes import NewsItem
 
-from database import NewsDatabase
+from database import Game, NewsDatabase
 
 # Generate RSS, see:
 # https://cyber.harvard.edu/rss/rss.html
@@ -46,12 +46,12 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
     #  but only if not present according to 'in' or difflib.get_close_matches.
     #get_close_matches isn't great for longer titles given the split() but /shrug
     #There are other libraries for fuzzy matching but difflib is built in...
-    games = db.get_source_names_for_item(row['gid']) or ['Unknown?']
+    games = db.get_source_names_and_appids_for_item(row['gid']) or [Game('Unknown?', 0)]
     rsstitle = row['title']
     if len(games) > 1:
         rsstitle = f'[Multiple] {rsstitle}'
-    elif games[0] not in rsstitle:
-        rsstitle = f'[{games[0]}] {rsstitle}'
+    elif games[0].name not in rsstitle:
+        rsstitle = f'[{games[0].name}] {rsstitle}'
     #else game title is in article title, do nothing
 
     source = row['feedlabel']
@@ -63,8 +63,10 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
         else:
             #shrug.
             source = row['feedname'] or 'Unknown Source'
-    
-    sources = f'<p><i>Via <b>{source}</b> for {", ".join(games)}</i></p>\n'
+
+    sources = f'''<p><i>Via <b>{source}</b> for {
+        ', '.join(f'<a href="https://store.steampowered.com/app/{game.appid}/">{game.name}</a>' for game in games)
+    }</i></p>\n'''
 
     return rss.RSSItem(
         title=rsstitle,
@@ -76,8 +78,8 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
         categories=[
             source
         ],
-        source=rss.Source(games[0], f'https://store.steampowered.com/app/{row["appid"]}/') if len(games) == 1 else None
-    )  # omitted: categories, comments, enclosure, source
+        source=rss.Source(games[0].name, f'https://store.steampowered.com/app/{games[0].appid}/') if len(games) == 1 else None
+    )
 
 # RE: BBCode http://bbcode.readthedocs.org/
 # note: feed_type is 1 for steam community announcements
