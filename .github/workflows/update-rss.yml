@@ -60,12 +60,6 @@ jobs:
           # Set this option if you want the action to update environment variables.
           # update-environment: # optional, default is true
 
-      - name: Cache SQLite database
-        uses: actions/cache@v3
-        with:
-          key: SteamNews SQLite
-          path: SteamNews.db
-
       - name: Install dependencies
         run: |
           python3 -m pip install -r requirements.txt
