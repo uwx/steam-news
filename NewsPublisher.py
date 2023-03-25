@@ -120,7 +120,7 @@ span.bb_spoiler:hover > span {
 def convertBBCodeToHTML(text: str):
     bb = bbcode.Parser()
 
-    for tag in ('strike', 'table', 'tr', 'th', 'td', 'h1', 'h2', 'h3'):
+    for tag in ('strike', 'table', 'tr', 'th', 'td', 'h1', 'h2', 'h3', 'h4', 'h5,' 'h6'):
         bb.add_simple_formatter(tag, f'<{tag}>%(value)s</{tag}>')
 
     #bb.add_simple_formatter('img', '<img style="display: inline-block; max-width: 100%%;" src="%(value)s"></img>', strip=True, replace_links=False)
