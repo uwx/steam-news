@@ -78,6 +78,7 @@ class NewsDatabase:
                     REFERENCES Games(appid) ON DELETE CASCADE ON UPDATE CASCADE,
                 PRIMARY KEY(gid, appid));
             CREATE INDEX NewsDateIdx ON NewsItems(date);
+            CREATE INDEX NewsSourceAppIDIdx ON NewsSources(appid);
         ''')
 
         #having news item appid foreign key on games can break,
@@ -187,5 +188,5 @@ class NewsDatabase:
             FROM NewsSources NATURAL JOIN Games
             WHERE gid = ? ORDER BY appid
         ''', (gid,))
-        
+
         return [Game(name, appid) for (name, appid) in c.fetchall()]

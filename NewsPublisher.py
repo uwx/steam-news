@@ -139,13 +139,16 @@ def convertBBCodeToHTML(text: str):
 # [img]{STEAM_CLAN_IMAGE}/27357479/d1048c635a5672f8efea79138bfd105b3cae552e.jpg[/img]
 # which should translate to <img src="https://steamcdn-a.akamaihd.net/steamcommunity/public/images/clans/27357479/d1048c635a5672f8efea79138bfd105b3cae552e.jpg">
 # e.g. {STEAM_CLAN_IMAGE} -> https://steamcdn-a.akamaihd.net/steamcommunity/public/images/clans
+# as of late June? 2023, {STEAM_CLAN_IMAGE}/10546736/1a953901843868985238b9348f46da851c9e5665.png becomes
+# https://clan.akamai.steamstatic.com/images//10546736/1a953901843868985238b9348f46da851c9e5665.png
+
 # Steam News (official blog) has a newer tag type
 # {STEAM_CLAN_LOC_IMAGE}/27766192/45e4984a51cabcc390f9e1c1d2345da97f744851.gif becomes...
 # https://cdn.akamai.steamstatic.com/steamcommunity/public/images/clans/27766192/45e4984a51cabcc390f9e1c1d2345da97f744851.gif
 
 #sort of makes me wonder if these are interchangable...
 IMG_REPLACEMENTS = {
-    '{STEAM_CLAN_IMAGE}': 'https://steamcdn-a.akamaihd.net/steamcommunity/public/images/clans',
+    '{STEAM_CLAN_IMAGE}': 'https://clan.akamai.steamstatic.com/images/',
     '{STEAM_CLAN_LOC_IMAGE}': 'https://cdn.akamai.steamstatic.com/steamcommunity/public/images/clans',
 }
 
@@ -159,12 +162,12 @@ def render_yt(tag_name: str, value: str, options: dict[str, str], parent, contex
     # Youtube links in Steam posts look like
     # [previewyoutube=gJEgjiorUPo;full][/previewyoutube]
     # We *could* transform them into youtube embeds but
-    # I'd rather have the choice to click on them, so just make them youtu.be links
+    # I'd rather have the choice to click on them, so just make them regular links
     try:
         # grab everything between the '=' (options dict) and the ';'
         # TODO is there always a ;full component?
         yt_id = options['previewyoutube'][:options['previewyoutube'].index(';')]
-        return '<a rel="nofollow" href="https://youtu.be/{0}">https://youtu.be/{0}</a>'.format(yt_id)
+        return f'<a rel="nofollow" href="https://www.youtube.com/watch?v={yt_id}">https://www.youtube.com/watch?v={yt_id}</a>'
     except (KeyError, ValueError):
         # TODO uhh... look at https://dcwatson.github.io/bbcode/formatters/ again
         return ''
