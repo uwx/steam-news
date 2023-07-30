@@ -37,6 +37,24 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: Keepalive Workflow
+        # You may pin to the exact commit or the version.
+        # uses: gautamkrishnar/keepalive-workflow@790c7f09285a59b09bb578c85e271c6ff2af97c4
+        uses: gautamkrishnar/keepalive-workflow@1.1.0
+        with: {}
+          # # GitHub access token with Repo scope
+          # gh_token: # optional, default is ${{ github.token }}
+          # # Commit message used while committing to the repo
+          # commit_message: # optional, default is Automated commit by Keepalive Workflow to keep the repository active
+          # # Username used while committing to the repo
+          # committer_username: # optional, default is gkr-bot
+          # # Email id used while committing to the repo
+          # committer_email: # optional, default is gkr-bot@tuta.io
+          # # Time elapsed from the last commit to trigger a new automated commit (in days)
+          # time_elapsed: # optional, default is 50
+          # # Defines if the workflow pushes the changes automatically
+          # auto_push: # optional, default is true
+
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
