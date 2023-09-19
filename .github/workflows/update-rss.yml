@@ -46,7 +46,7 @@ jobs:
         uses: gautamkrishnar/keepalive-workflow@1.1.0
         with:
           # # GitHub access token with Repo scope
-          # gh_token: # optional, default is ${{ github.token }}
+          gh_token: ${{ secrets.GH_TOKEN }} # optional, default is ${{ github.token }}
           # # Commit message used while committing to the repo
           commit_message: Automated commit [ci skip] [skip ci] # optional, default is Automated commit by Keepalive Workflow to keep the repository active
           # # Username used while committing to the repo
