@@ -79,12 +79,10 @@ jobs:
           # update-environment: # optional, default is true
 
       - name: Setup SteamNews.db cache
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: SteamNews.db
-          key: db-${{ hashFiles('SteamNews.db') }}
-          restore-keys: |
-            db-
+          key: db-
           
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -118,3 +116,10 @@ jobs:
 
       - name: Vacuum SQLite database
         run: sqlite3 SteamNews.db "VACUUM;"
+
+      - name: Cache SteamNews.db database
+        uses: actions/cache/save@v3
+        with:
+          path: SteamNews.db
+          key: db-${{ hashFiles('SteamNews.db') }}
+          
