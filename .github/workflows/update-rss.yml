@@ -78,6 +78,19 @@ jobs:
           # Set this option if you want the action to update environment variables.
           # update-environment: # optional, default is true
 
+      - name: Setup SteamNews.db cache
+        uses: actions/cache@v3
+        with:
+          path: SteamNews.db
+          key: db-${{ hashFiles('SteamNews.db') }}
+          restore-keys: |
+            db-
+          
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: sqlite3
+          version: 1.0
+
       - name: Install dependencies
         run: |
           python3 -m pip install -r requirements.txt
@@ -102,3 +115,6 @@ jobs:
 
       - name: Deploy GitHub Pages site
         uses: actions/deploy-pages@v2.0.0
+
+      - name: Vacuum SQLite database
+        run: sqlite3 SteamNews.db "VACUUM;"
