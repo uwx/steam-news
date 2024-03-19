@@ -69,7 +69,7 @@ def getAppIDsFromURL(url: str):
     if applist is None:
         logger.info('Downloading steam app list...')
         with urlopen('https://api.steampowered.com/ISteamApps/GetAppList/v2/') as f:
-            applist = dict[int, str]((x['appid'], x['name']) for x in json.load(f)['apps'])
+            applist = dict[int, str]((x['appid'], x['name']) for x in json.load(f)['applist']['apps'])
 
     games: dict[int, str] = {}
     for ge in j['response']['games']:
