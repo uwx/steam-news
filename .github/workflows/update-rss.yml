@@ -5,7 +5,7 @@ on:
   # Triggers the workflow on push or pull request events but only for the "master" branch
   push:
     branches: [ "master" ]
-  
+
   schedule:
     - cron: 0 0 * * *
 
@@ -83,7 +83,7 @@ jobs:
         with:
           path: SteamNews.db
           key: db-
-          
+
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: sqlite3
@@ -92,10 +92,10 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install -r requirements.txt
-          
+
       - name: Add profile games
         run: |
-          ./SteamNews.py --add-profile-games _maxine
+          ./SteamNews.py --add-profile-games 76561198043308224
 
       - name: Update RSS feed
         run: |
@@ -122,4 +122,4 @@ jobs:
         with:
           path: SteamNews.db
           key: db-${{ hashFiles('SteamNews.db') }}
-          
+

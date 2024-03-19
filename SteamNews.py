@@ -45,32 +45,36 @@ STEAM_APPIDS = {
 
 
 def seed_database(idOrVanity: str, db: NewsDatabase):
-    try:
-        sid = int(idOrVanity)
-        url = f'https://steamcommunity.com/profiles/{sid}/games?xml=1'
-    except ValueError:  # it's probably a vanity str
-        url = f'https://steamcommunity.com/id/{idOrVanity}/games?xml=1'
+    sid = int(idOrVanity)
+    url = f'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=7FC6975AC56F6E142E40E7623F4BCBB1&steamid={sid}&format=json'
 
     newsids = getAppIDsFromURL(url)
     #Also add the hardcoded ones...
     newsids.update(STEAM_APPIDS)
     db.add_games(newsids)
 
+applist: dict[int, str] | None = None
 
 def getAppIDsFromURL(url: str):
+    global applist
+
     """Given a steam profile url, produce a dict of
     appids to names of games owned (appids are strings)
-    i.e. parses unofficial XML API of a Steam user's game list.
     Note that the profile in question needs to be public for this to work!"""
-    logger.info('Parsing XML from %s...', url)
-    xmlstr = urlopen(url).read().decode('utf-8')
-    dom: Document = minidom.parseString(xmlstr)
-    gameEls = cast(NodeList[Element], dom.getElementsByTagName('game'))
+    logger.info('Parsing JSON from %s...', url)
+
+    with urlopen(url) as f:
+        j = json.load(f)
+
+    if applist is None:
+        logger.info('Downloading steam app list...')
+        with urlopen('https://api.steampowered.com/ISteamApps/GetAppList/v2/') as f:
+            applist = dict[int, str]((x['appid'], x['name']) for x in json.load(f)['apps'])
 
     games: dict[int, str] = {}
-    for ge in gameEls:
-        appid = int(cast(Text, ge.getElementsByTagName('appID')[0].firstChild).data)
-        name = str(cast(Text, ge.getElementsByTagName('name')[0].firstChild).data)
+    for ge in j['response']['games']:
+        appid = ge['appid']
+        name = applist[appid] if appid in applist else str(appid)
         games[appid] = name
 
     logger.info('Found %d games.', len(games))
