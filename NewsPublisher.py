@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
+import io
 import logging
 from datetime import datetime, timezone
 import difflib
 from functools import partial
+import os
+import shutil
 from typing import cast
 
 import PyRSS2Gen as rss
@@ -181,7 +184,12 @@ def publish(db: NewsDatabase, output_path=None):
     feed = genRSSFeed(rssitems)
     logger.info('Writing to %s...', output_path)
     with open(output_path, 'w') as f:
-        feed.write_xml(f, 'utf-8')
+        xml_str = feed.to_xml()
+        xml_str = xml_str.replace('<?xml version="1.0" encoding="utf-8"?>', '<?xml version="1.0" encoding="utf-8"?>\n<?xml-stylesheet href="rss.xsl" type="text/xsl"?>')
+        f.write(xml_str)
+
+    shutil.copyfile('style.xml', os.path.join(os.path.dirname(output_path), 'style.xsl')
+
     logger.info('Published!')
 
 if __name__ == '__main__':
