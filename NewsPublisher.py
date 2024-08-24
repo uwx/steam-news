@@ -184,7 +184,7 @@ def publish(db: NewsDatabase, output_path=None):
     feed = genRSSFeed(rssitems)
     logger.info('Writing to %s...', output_path)
     with open(output_path, 'w') as f:
-        xml_str = feed.to_xml()
+        xml_str = feed.to_xml(encoding='utf-8')
         xml_str = xml_str.replace('<?xml version="1.0" encoding="utf-8"?>', '<?xml version="1.0" encoding="utf-8"?>\n<?xml-stylesheet href="rss.xsl" type="text/xsl"?>')
         f.write(xml_str)
 
