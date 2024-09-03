@@ -185,7 +185,7 @@ def publish(db: NewsDatabase, output_path=None):
     logger.info('Writing to %s...', output_path)
     with open(output_path, 'w') as f:
         xml_str = feed.to_xml(encoding='utf-8')
-        xml_str = xml_str.replace('<?xml version="1.0" encoding="utf-8"?>', '<?xml version="1.0" encoding="utf-8"?>\n<?xml-stylesheet href="rss.xsl" type="text/xsl"?>')
+        xml_str = xml_str.replace('<?xml version="1.0" encoding="utf-8"?>', '<?xml version="1.0" encoding="utf-8"?>\n<?xml-stylesheet href="style.xsl" type="text/xsl"?>')
         f.write(xml_str)
 
     shutil.copyfile('style.xsl', os.path.join(os.path.dirname(output_path), 'style.xsl'))
