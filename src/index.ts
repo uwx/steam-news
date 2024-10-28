@@ -262,6 +262,7 @@ export const args = parse<IArguments>({
 
 const isDbUninitialized = !await fs.exists(args.db_path);
 await using db = new NewsDatabase(args.db_path);
+await db.open();
 
 if (args.add_profile_games)
     await seedDatabase(args.add_profile_games, db, args.minimum_playtime, args.last_6_months_only);
