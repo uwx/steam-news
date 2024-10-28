@@ -115,7 +115,12 @@ export class NewsDatabase {
                     name
                 }))
             )
-            .onConflict(oc => oc.doNothing())
+            .onConflict(oc => oc
+                .column('appid')
+                .doUpdateSet(eb => ({
+                    name: eb.ref('excluded.name')
+                }))
+            )
             .executeTakeFirstOrThrow();
 
         console.log(`Added ${result.numInsertedOrUpdatedRows} new games to be fetched.`);
@@ -156,10 +161,10 @@ export class NewsDatabase {
         rc += res.numChangedRows ?? res.numUpdatedRows;
 
         res = await this.db
-                .updateTable('Games')
-                .set('shouldFetch', 0)
-                .where('appid', 'in', appidsAndShouldFetch.filter(([appid, shouldFetch]) => !shouldFetch).map(([appid, shouldFetch]) => appid))
-                .executeTakeFirstOrThrow();
+            .updateTable('Games')
+            .set('shouldFetch', 0)
+            .where('appid', 'in', appidsAndShouldFetch.filter(([appid, shouldFetch]) => !shouldFetch).map(([appid, shouldFetch]) => appid))
+            .executeTakeFirstOrThrow();
 
         rc += res.numChangedRows ?? res.numUpdatedRows;
 
