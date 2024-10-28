@@ -5,7 +5,7 @@
 // http://dalkescientific.com/Python/PyRSS2Gen.html
 
 import { Feed as RssFeed, Item as RssItem } from "feed";
-import * as fs from 'fsxt';
+import * as fs from 'fs/promises';
 
 function gen_rss_feed(rssitems: RssItem[]) {
     const pdate = new Date();

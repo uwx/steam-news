@@ -46,7 +46,7 @@ async function seedDatabase(id_or_vanity: string, db: NewsDatabase, minimum_play
                     ((
                         !last_6_months_only || new Date(game.rtime_last_played*1000) >= six_months_ago
                     ) && (
-                        minimum_playtime === undefined || game.playtime_forever >= minimum_playtime
+                        minimum_playtime === undefined || (game.playtime_forever >= minimum_playtime)
                     )) || appid in STEAM_APPIDS // add exception for steam_appids
                 ]
             )
@@ -276,23 +276,28 @@ export const args = parse<IArguments>({
     filter_feed_names: { type: String, optional: true },
 });
 
-const isDbUninitialized = !await fs.exists(args.db_path);
-await using db = new NewsDatabase(args.db_path);
-await db.open();
+{
+    const isDbUninitialized = !await fs.exists(args.db_path);
+    await using db = new NewsDatabase(args.db_path);
+    await db.open();
 
-if (args.add_profile_games)
-    await seedDatabase(args.add_profile_games, db, args.minimum_playtime, args.last_6_months_only);
+    if (args.add_profile_games)
+        await seedDatabase(args.add_profile_games, db, args.minimum_playtime, args.last_6_months_only);
 
-if (args.edit_games_like) {
-    // edit_fetch_games(args.edit_games_like, db)
-    // not implemented!
-} else { // editing is mutually exclusive w/ fetch & publish
-    if (args.fetch) {
-        const newsids = await db.getFetchGames();
-        await get_all_recent_news(newsids, db, args.filter_feed_names)
-    }
+    if (args.edit_games_like) {
+        // edit_fetch_games(args.edit_games_like, db)
+        // not implemented!
+    } else { // editing is mutually exclusive w/ fetch & publish
+        if (args.fetch) {
+            const newsids = await db.getFetchGames();
+            await get_all_recent_news(newsids, db, args.filter_feed_names)
+        }
 
-    if (args.publish) {
-        await publish(db, args.publish)
+        if (args.publish) {
+            await publish(db, args.publish)
+        }
     }
 }
+
+console.log('done');
+// process.exit(0);
