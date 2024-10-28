@@ -95,14 +95,14 @@ jobs:
 
       - name: Add profile games
         run: |
-          ./steam_news.py --add-profile-games 76561198043308224
+          python3 ./steam_news.py --add-profile-games 76561198043308224
         env:
           STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 
       - name: Update RSS feed
         run: |
           mkdir _site
-          ./steam_news.py --verbose --fetch --publish _site/steam_news.xml --filter-feed-names steam_community_announcements
+          python3 ./steam_news.py --verbose --fetch --publish _site/steam_news.xml --filter-feed-names steam_community_announcements
         env:
           STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 
@@ -114,6 +114,8 @@ jobs:
         with:
           # Upload entire repository
           path: '_site'
+        env:
+          STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 
       - name: Deploy GitHub Pages site
         uses: actions/deploy-pages@v3.0.1
