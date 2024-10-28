@@ -120,8 +120,8 @@ span.bb_spoiler:hover > span {
 }
 `;
 
-import { parse as bbParse } from './bbcode';
-import { NewsDatabase, NewsItem } from "./database";
+import { parse as bbParse } from './bbcode.js';
+import { NewsDatabase, NewsItem } from "./database.js";
 import { Selectable } from "kysely";
 import path from "node:path";
 

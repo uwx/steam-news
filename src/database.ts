@@ -220,6 +220,8 @@ export class NewsDatabase {
         // @ts-expect-error
         delete ned1.realappid;
 
+        console.log(ned1);
+
         await this.db
             .insertInto('NewsItems')
             .values(ned1)
