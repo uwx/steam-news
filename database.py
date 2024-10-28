@@ -116,9 +116,13 @@ class NewsDatabase:
             raise TypeError('DB not initialized')
 
         #sadly can't use executemany() w/ a "bare" list-- each item needs to be a tuple
+        rc = 0
         with self.db as db:
             for aid, should_fetch in appids_and_should_fetch:
-                db.execute(f'UPDATE Games SET shouldFetch = ? WHERE appid = ?', (1 if should_fetch else 0, aid,))
+                c = db.execute(f'UPDATE Games SET shouldFetch = ? WHERE appid = ?', (1 if should_fetch else 0, aid,))
+                rc += c.rowcount
+
+        logger.info('Set shouldFetch for %d games.', rc)
 
     def disable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:
