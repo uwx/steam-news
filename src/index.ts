@@ -23,9 +23,8 @@ const STEAM_APPIDS = {
 };
 
 async function seedDatabase(id_or_vanity: string, db: NewsDatabase, minimum_playtime?: number, last_6_months_only: boolean = false) {
-    const sid = Number(id_or_vanity)
     // https://steamcommunity.com/dev/apikey
-    const url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env["STEAM_WEB_API_KEY"]}&steamid=${sid}&format=json`;
+    const url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env["STEAM_WEB_API_KEY"]}&steamid=${id_or_vanity}&format=json`;
 
     const [newsids, games_full] = await get_app_ids_from_url(url);
 
