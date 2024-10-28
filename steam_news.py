@@ -112,7 +112,7 @@ def get_app_ids_from_url(url: str):
 
     for ge in j['response']['games']:
         # if last played >6mo ago
-        if datetime.fromtimestamp(ge['rtime_last_played'], timezone.utc) < (datetime.now() - timedelta(days=6 * 30)):
+        if datetime.fromtimestamp(ge['rtime_last_played'], timezone.utc) < (datetime.now(timezone.utc) - timedelta(days=6 * 30)):
             continue
 
         appid = ge['appid']
