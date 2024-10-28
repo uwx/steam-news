@@ -186,6 +186,7 @@ def get_all_recent_news(newsids: dict[int, str], db: NewsDatabase, filter_feed_n
     new_hits = 0
     fails = 0
     idx = 0
+    total_current = 0
     for aid, name in newsids.items():
         idx += 1
         if db.is_news_cached(aid):
@@ -199,6 +200,7 @@ def get_all_recent_news(newsids: dict[int, str], db: NewsDatabase, filter_feed_n
             new_hits += 1
             if cur_entries:
                 logger.info('[%d/%d] Fetched %d: %s OK; %d current items', idx, len(newsids), aid, name, cur_entries)
+                total_current += cur_entries
             else:
                 logger.info('[%d/%d] Fetched %d: %s OK; nothing current', idx, len(newsids), aid, name)
             time.sleep(0.25)
@@ -207,7 +209,7 @@ def get_all_recent_news(newsids: dict[int, str], db: NewsDatabase, filter_feed_n
             logger.error('[%d/%d] %d: %s fetch error: %s', idx, len(newsids), aid, name, news['error'])
             time.sleep(1)
 
-    logger.info('Run complete. %d cached, %d fetched, %d failed', cache_hits, new_hits, fails)
+    logger.info('Run complete. %d cached, %d fetched, %d failed; %d current news items', cache_hits, new_hits, fails, total_current)
 
 def edit_fetch_games(name: str, db: NewsDatabase):
     logger.info('Editing games like "%s"', name)
@@ -254,10 +256,10 @@ def edit_fetch_games(name: str, db: NewsDatabase):
 
 class Args(tap.TypedArgs):
     first_run: bool = tap.arg('--first-run')
-    add_profile_games: Optional[str] = tap.arg('-a', '--add-profile-games', help='steam ID or vanity url')
+    add_profile_games: Optional[str] = tap.arg('-a', '--add-profile-games', metavar='Steam ID|Vanity url')
     fetch: bool = tap.arg('-f', '--fetch')
-    publish: Optional[str] = tap.arg('-p', '--publish', help='path to XML output')
-    edit_games_like: Optional[str] = tap.arg('-g', '--edit-games-like', help='partial name of game')
+    publish: Optional[str] = tap.arg('-p', '--publish', metavar='XML output path')
+    edit_games_like: Optional[str] = tap.arg('-g', '--edit-games-like', metavar='partial name of game')
     verbose: bool = tap.arg('-v', '--verbose')
     db_path: str = tap.arg('--db-path', default='SteamNews.db')
     filter_feed_names: Optional[str] = tap.arg('--filter-feed-names')
