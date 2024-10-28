@@ -118,6 +118,7 @@ class NewsDatabase:
         #sadly can't use executemany() w/ a "bare" list-- each item needs to be a tuple
         for aid, should_fetch in appids_and_should_fetch:
             self.db.execute('UPDATE Games SET shouldFetch = ? WHERE appid = ?', (1 if should_fetch else 0, aid,))
+        self.db.commit()
 
     def disable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:
@@ -126,6 +127,7 @@ class NewsDatabase:
         #sadly can't use executemany() w/ a "bare" list-- each item needs to be a tuple
         for aid in appids:
             self.db.execute('UPDATE Games SET shouldFetch = 0 WHERE appid = ?', (aid,))
+        self.db.commit()
 
     def enable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:
@@ -133,6 +135,7 @@ class NewsDatabase:
 
         for aid in appids:
             self.db.execute('UPDATE Games SET shouldFetch = 1 WHERE appid = ?', (aid,))
+        self.db.commit()
 
     def should_fetch(self, appid: int):
         if not self.db:
@@ -158,8 +161,8 @@ class NewsDatabase:
         if not self.db:
             raise TypeError('DB not initialized')
 
-        with self.db as db:
-            db.execute('INSERT OR REPLACE INTO ExpireTimes VALUES (?, ?)', (appid, expires))
+        self.db.execute('INSERT OR REPLACE INTO ExpireTimes VALUES (?, ?)', (appid, expires))
+        self.db.commit()
 
     def is_news_cached(self, appid: int):
         if not self.db:
@@ -176,13 +179,13 @@ class NewsDatabase:
             raise TypeError('DB not initialized')
 
         #TODO maybe convert the dict to a namedtuple...?
-        with self.db as db:
-            db.execute('''
-                INSERT OR IGNORE INTO NewsItems
-                VALUES (:gid, :title, :url, :is_external_url, :author, :contents, :feedlabel, :date, :feedname, :feed_type, :appid)
-            ''', ned)
+        self.db.execute('''
+            INSERT OR IGNORE INTO NewsItems
+            VALUES (:gid, :title, :url, :is_external_url, :author, :contents, :feedlabel, :date, :feedname, :feed_type, :appid)
+        ''', ned)
 
-            db.execute('INSERT OR IGNORE INTO NewsSources VALUES (?, ?)', (ned['gid'], ned['realappid']))
+        self.db.execute('INSERT OR IGNORE INTO NewsSources VALUES (?, ?)', (ned['gid'], ned['realappid']))
+        self.db.commit()
 
     def get_news_rows(self) -> list[NewsItem]:
         if not self.db:
