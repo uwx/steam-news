@@ -1,10 +1,10 @@
 import 'dotenv/config';
 
 import { parse } from 'ts-command-line-args';
-import { NewsDatabase, NewsItem } from './database';
+import { NewsDatabase, NewsItem } from './database.js';
 import * as fs from 'fsxt';
 import { Selectable } from 'kysely';
-import { publish } from './news_publisher';
+import { publish } from './news_publisher.js';
 
 // Hardcoded list of AppIDs that return news related to Steam as a whole (not games)
 // Mileage may vary. Use app_id_discovery.py to maybe find more of these...
@@ -31,7 +31,7 @@ async function seedDatabase(id_or_vanity: string, db: NewsDatabase, minimum_play
 
     // Also add the hardcoded ones...
     for (const [k, v] of Object.entries(STEAM_APPIDS)) {
-        newsids[k] = v;
+        newsids[Number(k)] = v;
     }
     await db.addGames(newsids);
 
@@ -110,6 +110,7 @@ async function get_app_ids_from_url(url: string) {
 
     if (res.ok) {
         const j: GetOwnedGamesResult = await res.json();
+        console.log(j.response.games);
 
         for (const ge of j.response.games) {
             const appid = ge['appid'];
