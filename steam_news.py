@@ -49,15 +49,22 @@ STEAM_APPIDS = {
 }
 
 
-def seed_database(idOrVanity: str, db: NewsDatabase):
-    sid = int(idOrVanity)
+def seed_database(id_or_vanity: str, db: NewsDatabase):
+    sid = int(id_or_vanity)
     # https://steamcommunity.com/dev/apikey
     url = f'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={os.environ["STEAM_WEB_API_KEY"]}&steamid={sid}&format=json'
 
-    newsids = get_app_ids_from_url(url)
+    newsids, last_played = get_app_ids_from_url(url)
+
     #Also add the hardcoded ones...
     newsids.update(STEAM_APPIDS)
     db.add_games(newsids)
+
+    # set should_fetch to whether last played <6mo ago
+    six_months_ago = (datetime.now(timezone.utc) - timedelta(days=6 * 30))
+    db.set_fetching_ids(
+        (appid, last_played_datetime >= six_months_ago) for appid, last_played_datetime in last_played.items()
+    )
 
 applist: dict[int, str] | None = None
 
@@ -105,24 +112,22 @@ def get_app_ids_from_url(url: str):
         applist = dict[int, str]((x['appid'], x['name']) for x in cast(GetAppListResult, res.json())['applist']['apps'])
 
     games: dict[int, str] = {}
+    last_played: dict[int, datetime] = {}
 
     res = requests.get(url)
     if res.ok:
         j: GetOwnedGamesResult = res.json()
 
     for ge in j['response']['games']:
-        # if last played >6mo ago
-        if datetime.fromtimestamp(ge['rtime_last_played'], timezone.utc) < (datetime.now(timezone.utc) - timedelta(days=6 * 30)):
-            continue
-
         appid = ge['appid']
         name = applist[appid] \
             if appid in applist \
             else str(appid)
         games[appid] = name
+        last_played[appid] = datetime.fromtimestamp(ge['rtime_last_played'], timezone.utc)
 
     logger.info('Found %d games.', len(games))
-    return games
+    return games, last_played
 
 # Date/time manipulation
 

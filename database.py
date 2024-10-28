@@ -111,22 +111,28 @@ class NewsDatabase:
             c = self.db.execute('SELECT * FROM Games ORDER BY name')
         return c.fetchall()
 
+    def set_fetching_ids(self, appids_and_should_fetch: Iterable[tuple[int, bool]]):
+        if not self.db:
+            raise TypeError('DB not initialized')
+
+        #sadly can't use executemany() w/ a "bare" list-- each item needs to be a tuple
+        for aid, should_fetch in appids_and_should_fetch:
+            self.db.execute('UPDATE Games SET shouldFetch = ? WHERE appid = ?', (1 if should_fetch else 0, aid,))
+
     def disable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:
             raise TypeError('DB not initialized')
 
-        with self.db as db:
-            #sadly can't use executemany() w/ a "bare" list-- each item needs to be a tuple
-            for aid in appids:
-                db.execute('UPDATE Games SET shouldFetch = 0 WHERE appid = ?', (aid,))
+        #sadly can't use executemany() w/ a "bare" list-- each item needs to be a tuple
+        for aid in appids:
+            self.db.execute('UPDATE Games SET shouldFetch = 0 WHERE appid = ?', (aid,))
 
     def enable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:
             raise TypeError('DB not initialized')
 
-        with self.db as db:
-            for aid in appids:
-                db.execute('UPDATE Games SET shouldFetch = 1 WHERE appid = ?', (aid,))
+        for aid in appids:
+            self.db.execute('UPDATE Games SET shouldFetch = 1 WHERE appid = ?', (aid,))
 
     def get_fetch_games(self) -> dict[int, str]:
         if not self.db:
