@@ -110,7 +110,7 @@ async function get_app_ids_from_url(url: string) {
 
     if (res.ok) {
         const j: GetOwnedGamesResult = await res.json();
-        console.log(j.response.games);
+        console.log(j.response);
 
         for (const ge of j.response.games) {
             const appid = ge['appid'];
