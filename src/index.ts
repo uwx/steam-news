@@ -123,9 +123,25 @@ async function get_app_ids_from_url(url: string) {
     return [games, games_full] as const;
 }
 
+export interface AppNewsItem {
+    gid: string;
+    title: string;
+    url: string;
+    is_external_url: boolean;
+    author: string;
+    contents: string;
+    feedlabel: string;
+    date: number;
+    feedname: string;
+    feed_type: number; // 0=HTML, 1=BBCODE
+    appid: number;
+    tags: string[];
+    realappid: number;
+}
+
 interface AppNews {
     appid: number;
-    newsitems: (Selectable<NewsItem> & { realappid: number })[];
+    newsitems: AppNewsItem[];
 }
 
 interface News {
@@ -171,7 +187,7 @@ async function get_news_for_appid(appid: number, filter_feed_names?: string): Pr
 
 const sleep = (sec: number) => new Promise(resolve => setTimeout(resolve, sec*1000));
 
-function is_news_old(ned: Selectable<NewsItem>) {
+function is_news_old(ned: AppNewsItem) {
     // """Is this news item more than 30 days old?"""
     const newsdt = new Date(ned['date']*1000)
     let thirtyago = new Date();

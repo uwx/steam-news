@@ -48,6 +48,7 @@ export interface Database {
 
 import SQLite from 'better-sqlite3';
 import { Kysely, Migrator, sql, SqliteDialect } from 'kysely';
+import type { AppNewsItem } from "./index.js";
 
 async function openDb(path: string) {
     const dialect = new SqliteDialect({
@@ -213,18 +214,24 @@ export class NewsDatabase {
         return exptime !== undefined && (Date.now() / 1000) < exptime.unixseconds;
     }
 
-    async insertNewsItem(ned: Insertable<NewsItem> & { realappid: number }) {
+    async insertNewsItem(ned: AppNewsItem) {
         if (!this.db) throw new Error('DB not initialized');
-
-        let ned1 = {...ned};
-        // @ts-expect-error
-        delete ned1.realappid;
-
-        console.log(ned1);
 
         await this.db
             .insertInto('NewsItems')
-            .values(ned1)
+            .values({
+                appid: ned.appid,
+                author: ned.author,
+                contents: ned.contents,
+                date: ned.date,
+                feed_type: ned.feed_type,
+                feedlabel: ned.feedlabel,
+                feedname: ned.feedname,
+                gid: ned.gid,
+                is_external_url: ned.is_external_url ? 1 : 0,
+                title: ned.title,
+                url: ned.url,
+            })
             .onConflict(oc => oc.doNothing())
             .execute();
 
