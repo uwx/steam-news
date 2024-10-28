@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 import { parse } from 'ts-command-line-args';
 import { NewsDatabase, NewsItem } from './database';
-import fs from 'fsxt';
+import * as fs from 'fsxt';
 import { Selectable } from 'kysely';
 import { publish } from './news_publisher';
 
