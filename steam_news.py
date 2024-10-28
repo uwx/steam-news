@@ -257,7 +257,7 @@ class Args(tap.TypedArgs):
     add_profile_games: Optional[str] = tap.arg('-a', '--add-profile-games', help='steam ID or vanity url')
     fetch: bool = tap.arg('-f', '--fetch')
     publish: Optional[str] = tap.arg('-p', '--publish', help='path to XML output')
-    edit_games_like: str = tap.arg('-g', '--edit-games-like', help='partial name of game')
+    edit_games_like: Optional[str] = tap.arg('-g', '--edit-games-like', help='partial name of game')
     verbose: bool = tap.arg('-v', '--verbose')
     db_path: str = tap.arg('--db-path', default='SteamNews.db')
     filter_feed_names: Optional[str] = tap.arg('--filter-feed-names')
