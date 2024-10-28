@@ -58,25 +58,9 @@ jobs:
           # # Defines if the workflow pushes the changes automatically
           # auto_push: # optional, default is true
 
-      - name: Setup Python
-        uses: actions/setup-python@v4.5.0
+      - uses: pnpm/action-setup@v4
         with:
-          # Version range or exact version of Python or PyPy to use, using SemVer's version range syntax. Reads from .python-version if unset.
-          python-version: '*' # optional
-          # File containing the Python version to use. Example: .python-version
-          # python-version-file: # optional
-          # Used to specify a package manager for caching in the default directory. Supported values: pip, pipenv, poetry.
-          cache: pip # optional
-          # The target architecture (x86, x64) of the Python or PyPy interpreter.
-          # architecture: # optional
-          # Set this option if you want the action to check for the latest available version that satisfies the version spec.
-          check-latest: true # optional
-          # The token used to authenticate when fetching Python distributions from https://github.com/actions/python-versions. When running this action on github.com, the default value is sufficient. When running on GHES, you can pass a personal access token for github.com if you are experiencing rate limiting.
-          # token: # optional, default is ${{ github.server_url == 'https://github.com' && github.token || '' }}
-          # Used to specify the path to dependency files. Supports wildcards or a list of file names for caching multiple dependencies.
-          # cache-dependency-path: # optional
-          # Set this option if you want the action to update environment variables.
-          # update-environment: # optional, default is true
+          version: 9
 
       - name: Setup SteamNews.db cache
         uses: actions/cache/restore@v3
@@ -90,19 +74,18 @@ jobs:
           version: 1.0
 
       - name: Install dependencies
-        run: |
-          python3 -m pip install -r requirements.txt
+        run: pnpm install
 
       - name: Add profile games
         run: |
-          python3 ./steam_news.py --add-profile-games 76561198043308224 --minimum-playtime 180 --last-6-months-only
+          pnpx tsx src/index.ts --add_profile_games 76561198043308224 --minimum_playtime 180 --last_6_months_only
         env:
           STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 
       - name: Update RSS feed
         run: |
           mkdir _site
-          python3 ./steam_news.py --verbose --fetch --publish _site/steam_news.xml --filter-feed-names steam_community_announcements
+          pnpx tsx src/index.ts --verbose --fetch --publish _site/steam_news.xml --filter_feed_names steam_community_announcements
         env:
           STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 
@@ -114,8 +97,6 @@ jobs:
         with:
           # Upload entire repository
           path: '_site'
-        env:
-          STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 
       - name: Deploy GitHub Pages site
         uses: actions/deploy-pages@v3.0.1
