@@ -1,0 +1,9 @@
+{
+    "buildOptions": {},
+    "compilerOptions": {
+        "checkJs": true
+    },
+    "include": [
+        "*.js"
+, "dom-proxy.ts"    ]
+}
