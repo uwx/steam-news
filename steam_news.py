@@ -49,7 +49,7 @@ STEAM_APPIDS = {
 }
 
 
-def seed_database(id_or_vanity: str, db: NewsDatabase, minimum_playtime: Optional[int]):
+def seed_database(id_or_vanity: str, db: NewsDatabase, minimum_playtime: Optional[int], last_6_months_only: bool):
     sid = int(id_or_vanity)
     # https://steamcommunity.com/dev/apikey
     url = f'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={os.environ["STEAM_WEB_API_KEY"]}&steamid={sid}&format=json'
@@ -61,15 +61,16 @@ def seed_database(id_or_vanity: str, db: NewsDatabase, minimum_playtime: Optiona
     db.add_games(newsids)
 
     # set should_fetch to whether last played <6mo ago and >minimum_playtime
-    six_months_ago = (datetime.now(timezone.utc) - timedelta(days=6 * 30))
-    db.set_fetching_ids(
-        (
-            appid,
-            (datetime.fromtimestamp(game['rtime_last_played'], timezone.utc) >= six_months_ago
-                and (minimum_playtime is None or game['playtime_forever'] > minimum_playtime))
-                or appid in STEAM_APPIDS # add exception for steam_appids
-        ) for appid, game in games_full.items()
-    )
+    if last_6_months_only or minimum_playtime is not None:
+        six_months_ago = (datetime.now(timezone.utc) - timedelta(days=6 * 30))
+        db.set_fetching_ids(
+            (
+                appid,
+                ((not last_6_months_only or datetime.fromtimestamp(game['rtime_last_played'], timezone.utc) >= six_months_ago)
+                    and (minimum_playtime is None or game['playtime_forever'] > minimum_playtime))
+                    or appid in STEAM_APPIDS # add exception for steam_appids
+            ) for appid, game in games_full.items()
+        )
 
 applist: dict[int, str] | None = None
 
@@ -267,6 +268,7 @@ def edit_fetch_games(name: str, db: NewsDatabase):
 class Args(tap.TypedArgs):
     first_run: bool = tap.arg('--first-run')
     add_profile_games: Optional[str] = tap.arg('-a', '--add-profile-games', metavar='Steam ID|Vanity url')
+    last_6_months_only: bool = tap.arg('--last-6-months-only', help='when using --add-profile-games, omit games not played in the last 6 months')
     minimum_playtime: Optional[int] = tap.arg('--minimum-playtime', help='when using --add-profile-games, minimum playtime to consider', metavar='minutes')
     fetch: bool = tap.arg('-f', '--fetch')
     publish: Optional[str] = tap.arg('-p', '--publish', metavar='XML output path')
@@ -289,7 +291,7 @@ def main(args: Args):
             db.first_run()
 
         if args.add_profile_games:
-            seed_database(args.add_profile_games, db, args.minimum_playtime)
+            seed_database(args.add_profile_games, db, args.minimum_playtime, args.last_6_months_only)
 
         if args.edit_games_like:
             edit_fetch_games(args.edit_games_like, db)
