@@ -1,0 +1,3 @@
+[submodule "styling/rss-parser"]
+	path = styling/rss-parser
+	url = https://github.com/uwx/isomorphic-xml2js-rss-parser

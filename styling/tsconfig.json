@@ -7,7 +7,8 @@
     },
     "include": [
         "*.js",
-        "*.ts"
+        "*.ts",
+        "rss-parser/**/*.js"
     ],
     "exclude": [
         "node_modules"
