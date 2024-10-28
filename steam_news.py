@@ -49,22 +49,26 @@ STEAM_APPIDS = {
 }
 
 
-def seed_database(id_or_vanity: str, db: NewsDatabase):
+def seed_database(id_or_vanity: str, db: NewsDatabase, minimum_playtime: Optional[int]):
     sid = int(id_or_vanity)
     # https://steamcommunity.com/dev/apikey
     url = f'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={os.environ["STEAM_WEB_API_KEY"]}&steamid={sid}&format=json'
 
-    newsids, last_played = get_app_ids_from_url(url)
+    newsids, games_full = get_app_ids_from_url(url)
 
     #Also add the hardcoded ones...
     newsids.update(STEAM_APPIDS)
     db.add_games(newsids)
 
-    # set should_fetch to whether last played <6mo ago
-    logger.info(last_played)
+    # set should_fetch to whether last played <6mo ago and >minimum_playtime
     six_months_ago = (datetime.now(timezone.utc) - timedelta(days=6 * 30))
     db.set_fetching_ids(
-        (appid, last_played_datetime >= six_months_ago) for appid, last_played_datetime in last_played.items()
+        (
+            appid,
+            (datetime.fromtimestamp(game['rtime_last_played'], timezone.utc) >= six_months_ago
+                and (minimum_playtime is None or game['playtime_forever'] > minimum_playtime))
+                or appid in STEAM_APPIDS # add exception for steam_appids
+        ) for appid, game in games_full.items()
     )
 
 applist: dict[int, str] | None = None
@@ -113,7 +117,7 @@ def get_app_ids_from_url(url: str):
         applist = dict[int, str]((x['appid'], x['name']) for x in cast(GetAppListResult, res.json())['applist']['apps'])
 
     games: dict[int, str] = {}
-    last_played: dict[int, datetime] = {}
+    games_full: dict[int, GetOwnedGamesResult_Game] = {}
 
     res = requests.get(url)
     if res.ok:
@@ -125,10 +129,10 @@ def get_app_ids_from_url(url: str):
             if appid in applist \
             else str(appid)
         games[appid] = name
-        last_played[appid] = datetime.fromtimestamp(ge['rtime_last_played'], timezone.utc)
+        games_full[appid] = ge
 
     logger.info('Found %d games.', len(games))
-    return games, last_played
+    return games, games_full
 
 # Date/time manipulation
 
@@ -263,6 +267,7 @@ def edit_fetch_games(name: str, db: NewsDatabase):
 class Args(tap.TypedArgs):
     first_run: bool = tap.arg('--first-run')
     add_profile_games: Optional[str] = tap.arg('-a', '--add-profile-games', metavar='Steam ID|Vanity url')
+    minimum_playtime: Optional[int] = tap.arg('--minimum-playtime', help='when using --add-profile-games, minimum playtime to consider', metavar='minutes')
     fetch: bool = tap.arg('-f', '--fetch')
     publish: Optional[str] = tap.arg('-p', '--publish', metavar='XML output path')
     edit_games_like: Optional[str] = tap.arg('-g', '--edit-games-like', metavar='partial name of game')
@@ -284,7 +289,7 @@ def main(args: Args):
             db.first_run()
 
         if args.add_profile_games:
-            seed_database(args.add_profile_games, db)
+            seed_database(args.add_profile_games, db, args.minimum_playtime)
 
         if args.edit_games_like:
             edit_fetch_games(args.edit_games_like, db)
