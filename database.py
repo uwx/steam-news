@@ -118,7 +118,7 @@ class NewsDatabase:
         #sadly can't use executemany() w/ a "bare" list-- each item needs to be a tuple
         with self.db as db:
             for aid, should_fetch in appids_and_should_fetch:
-                db.execute(f'UPDATE Games SET shouldFetch = {1 if should_fetch else 0} WHERE appid = ?', (aid,))
+                db.execute(f'UPDATE Games SET shouldFetch = ? WHERE appid = ?', (1 if should_fetch else 0, aid,))
 
     def disable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:
@@ -136,19 +136,6 @@ class NewsDatabase:
         with self.db as db:
             for aid in appids:
                 db.execute('UPDATE Games SET shouldFetch = 1 WHERE appid = ?', (aid,))
-
-    def should_fetch(self, appid: int):
-        if not self.db:
-            raise TypeError('DB not initialized')
-
-        c = self.db.execute('''
-            SELECT shouldFetch FROM Games
-            WHERE appid = ?
-        ''', (appid,))
-
-        row = c.fetchone()
-
-        return row is not None and int(row[0]) == 1
 
     def get_fetch_games(self) -> dict[int, str]:
         if not self.db:
