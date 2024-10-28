@@ -107,12 +107,16 @@ export class NewsDatabase {
     async addGames(games: Record<number, string>) {
         if (!this.db) throw new Error('DB not initialized');
 
-        const result = await this.db.insertInto('Games').values(
-            Object.entries(games).map(([appid, name]) => ({
-                appid: Number(appid),
-                name
-            }))
-        ).executeTakeFirstOrThrow();
+        const result = await this.db
+            .insertInto('Games')
+                .values(
+                Object.entries(games).map(([appid, name]) => ({
+                    appid: Number(appid),
+                    name
+                }))
+            )
+            .onConflict(oc => oc.doNothing())
+            .executeTakeFirstOrThrow();
 
         console.log(`Added ${result.numInsertedOrUpdatedRows} new games to be fetched.`);
     }
