@@ -134,6 +134,19 @@ class NewsDatabase:
         for aid in appids:
             self.db.execute('UPDATE Games SET shouldFetch = 1 WHERE appid = ?', (aid,))
 
+    def should_fetch(self, appid: int):
+        if not self.db:
+            raise TypeError('DB not initialized')
+
+        c = self.db.execute('''
+            SELECT shouldFetch FROM Games
+            WHERE appid = ?
+        ''', (appid,))
+
+        row = c.fetchone()
+
+        return row is not None and int(row[0]) == 1
+
     def get_fetch_games(self) -> dict[int, str]:
         if not self.db:
             raise TypeError('DB not initialized')

@@ -194,6 +194,10 @@ def get_all_recent_news(newsids: dict[int, str], db: NewsDatabase, filter_feed_n
     total_current = 0
     for aid, name in newsids.items():
         idx += 1
+        if not db.should_fetch(aid):
+            logger.info('[%d/%d] Skipped %d: shouldFetch is False', idx, len(newsids), aid)
+            continue
+
         if db.is_news_cached(aid):
             logger.info('[%d/%d] Cache for %d: %s still valid!', idx, len(newsids), aid, name)
             cache_hits += 1
