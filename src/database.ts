@@ -216,9 +216,13 @@ export class NewsDatabase {
     async insertNewsItem(ned: Insertable<NewsItem> & { realappid: number }) {
         if (!this.db) throw new Error('DB not initialized');
 
+        let ned1 = {...ned};
+        // @ts-expect-error
+        delete ned1.realappid;
+
         await this.db
             .insertInto('NewsItems')
-            .values(ned)
+            .values(ned1)
             .onConflict(oc => oc.doNothing())
             .execute();
 
