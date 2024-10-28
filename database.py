@@ -116,26 +116,26 @@ class NewsDatabase:
             raise TypeError('DB not initialized')
 
         #sadly can't use executemany() w/ a "bare" list-- each item needs to be a tuple
-        for aid, should_fetch in appids_and_should_fetch:
-            self.db.execute('UPDATE Games SET shouldFetch = ? WHERE appid = ?', (1 if should_fetch else 0, aid,))
-        self.db.commit()
+        with self.db as db:
+            for aid, should_fetch in appids_and_should_fetch:
+                db.execute('UPDATE Games SET shouldFetch = ? WHERE appid = ?', (1 if should_fetch else 0, aid,))
 
     def disable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:
             raise TypeError('DB not initialized')
 
         #sadly can't use executemany() w/ a "bare" list-- each item needs to be a tuple
-        for aid in appids:
-            self.db.execute('UPDATE Games SET shouldFetch = 0 WHERE appid = ?', (aid,))
-        self.db.commit()
+        with self.db as db:
+            for aid in appids:
+                db.execute('UPDATE Games SET shouldFetch = 0 WHERE appid = ?', (aid,))
 
     def enable_fetching_ids(self, appids: Iterable[int]):
         if not self.db:
             raise TypeError('DB not initialized')
 
-        for aid in appids:
-            self.db.execute('UPDATE Games SET shouldFetch = 1 WHERE appid = ?', (aid,))
-        self.db.commit()
+        with self.db as db:
+            for aid in appids:
+                db.execute('UPDATE Games SET shouldFetch = 1 WHERE appid = ?', (aid,))
 
     def should_fetch(self, appid: int):
         if not self.db:
@@ -161,8 +161,8 @@ class NewsDatabase:
         if not self.db:
             raise TypeError('DB not initialized')
 
-        self.db.execute('INSERT OR REPLACE INTO ExpireTimes VALUES (?, ?)', (appid, expires))
-        self.db.commit()
+        with self.db as db:
+            db.execute('INSERT OR REPLACE INTO ExpireTimes VALUES (?, ?)', (appid, expires))
 
     def is_news_cached(self, appid: int):
         if not self.db:
@@ -184,8 +184,8 @@ class NewsDatabase:
             VALUES (:gid, :title, :url, :is_external_url, :author, :contents, :feedlabel, :date, :feedname, :feed_type, :appid)
         ''', ned)
 
-        self.db.execute('INSERT OR IGNORE INTO NewsSources VALUES (?, ?)', (ned['gid'], ned['realappid']))
-        self.db.commit()
+        with self.db as db:
+            db.execute('INSERT OR IGNORE INTO NewsSources VALUES (?, ?)', (ned['gid'], ned['realappid']))
 
     def get_news_rows(self) -> list[NewsItem]:
         if not self.db:

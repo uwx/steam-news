@@ -61,6 +61,7 @@ def seed_database(id_or_vanity: str, db: NewsDatabase):
     db.add_games(newsids)
 
     # set should_fetch to whether last played <6mo ago
+    logger.info(last_played)
     six_months_ago = (datetime.now(timezone.utc) - timedelta(days=6 * 30))
     db.set_fetching_ids(
         (appid, last_played_datetime >= six_months_ago) for appid, last_played_datetime in last_played.items()
