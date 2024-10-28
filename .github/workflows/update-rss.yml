@@ -95,12 +95,16 @@ jobs:
 
       - name: Add profile games
         run: |
-          ./SteamNews.py --add-profile-games 76561198043308224
+          ./steam_news.py --add-profile-games 76561198043308224
+        env:
+          STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 
       - name: Update RSS feed
         run: |
           mkdir _site
-          ./SteamNews.py --verbose --fetch --publish _site/steam_news.xml --filter-feed-names steam_community_announcements
+          ./steam_news.py --verbose --fetch --publish _site/steam_news.xml --filter-feed-names steam_community_announcements
+        env:
+          STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

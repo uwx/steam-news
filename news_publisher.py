@@ -11,7 +11,7 @@ from typing import cast
 
 import PyRSS2Gen as rss
 import bbcode
-from SteamNewsTypes import NewsItem
+from steam_news_types import NewsItem
 
 from database import Game, NewsDatabase
 
@@ -23,7 +23,7 @@ from database import Game, NewsDatabase
 
 logger = logging.getLogger(__name__)
 
-def genRSSFeed(rssitems: list[rss.RSSItem]):
+def gen_rss_feed(rssitems: list[rss.RSSItem]):
     pdate = datetime.now(timezone.utc)
     lbdate = max(cast(datetime, x.pubDate) for x in rssitems)
     return rss.RSS2(
@@ -39,33 +39,33 @@ def genRSSFeed(rssitems: list[rss.RSSItem]):
 FEEDTYPE_HTML = 0
 FEEDTYPE_BBCODE = 1
 
-def rowToRSSItem(row: NewsItem, db: NewsDatabase):
-    if row['feed_type'] == FEEDTYPE_BBCODE:
-        content = convertBBCodeToHTML(row['contents'])
+def news_item_to_rss_item(newsitem: NewsItem, db: NewsDatabase):
+    if newsitem['feed_type'] == FEEDTYPE_BBCODE:
+        content = convertBBCodeToHTML(newsitem['contents'])
     else:
-        content = row['contents']
+        content = newsitem['contents']
 
     #Add the title of the game to the article title,
     #  but only if not present according to 'in' or difflib.get_close_matches.
     #get_close_matches isn't great for longer titles given the split() but /shrug
     #There are other libraries for fuzzy matching but difflib is built in...
-    games = db.get_source_names_and_appids_for_item(row['gid']) or [Game('Unknown?', 0)]
-    rsstitle = row['title']
+    games = db.get_source_names_and_appids_for_item(newsitem['gid']) or [Game('Unknown?', 0)]
+    rsstitle = newsitem['title']
     if len(games) > 1:
         rsstitle = f'[Multiple] {rsstitle}'
     elif games[0].name not in rsstitle:
         rsstitle = f'[{games[0].name}] {rsstitle}'
     #else game title is in article title, do nothing
 
-    source = row['feedlabel']
+    source = newsitem['feedlabel']
     if not source:
         #patch over missing feedname in Steam News;
         # seems to be the only news source w/o feedlabels?
-        if row['feedname'] == 'steam_community_blog':
+        if newsitem['feedname'] == 'steam_community_blog':
             source = 'Steam Community Blog'
         else:
             #shrug.
-            source = row['feedname'] or 'Unknown Source'
+            source = newsitem['feedname'] or 'Unknown Source'
 
     sources = f'''<p><i>Via <b>{source}</b> for {
         ', '.join(f'<a href="https://store.steampowered.com/app/{game.appid}/">{game.name}</a>' for game in games)
@@ -73,11 +73,11 @@ def rowToRSSItem(row: NewsItem, db: NewsDatabase):
 
     return rss.RSSItem(
         title=rsstitle,
-        link=row['url'],
+        link=newsitem['url'],
         description=sources + content,
-        author=row['author'],
-        guid=rss.Guid(row['gid'], isPermaLink=False),
-        pubDate=datetime.fromtimestamp(row['date'], timezone.utc),
+        author=newsitem['author'],
+        guid=rss.Guid(newsitem['gid'], isPermaLink=False),
+        pubDate=datetime.fromtimestamp(newsitem['date'], timezone.utc),
         categories=[
             source
         ],
@@ -180,12 +180,12 @@ def publish(db: NewsDatabase, output_path=None):
         output_path = 'steam_news.xml'
 
     logger.info('Generating RSS feed...')
-    rssitems = [rowToRSSItem(row, db) for row in db.get_news_rows()]
-    feed = genRSSFeed(rssitems)
+    rssitems = [news_item_to_rss_item(row, db) for row in db.get_news_rows()]
+    feed = gen_rss_feed(rssitems)
     logger.info('Writing to %s...', output_path)
     with open(output_path, 'w') as f:
         xml_str = feed.to_xml(encoding='utf-8')
-        xml_str = xml_str.replace('<?xml version="1.0" encoding="utf-8"?>', '<?xml version="1.0" encoding="utf-8"?>\n<?xml-stylesheet href="rss.xsl" type="text/xsl"?>')
+        xml_str = xml_str.replace('<?xml version="1.0" encoding="utf-8"?>', '<?xml version="1.0" encoding="utf-8"?>\n<?xml-stylesheet href="style.xsl" type="text/xsl"?>')
         f.write(xml_str)
 
     shutil.copyfile('style.xsl', os.path.join(os.path.dirname(output_path), 'style.xsl'))
@@ -194,8 +194,6 @@ def publish(db: NewsDatabase, output_path=None):
 
 if __name__ == '__main__':
     import sys
-    logging.basicConfig(stream=sys.stdout,
-            format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',
-            level=logging.DEBUG)
+    logging.basicConfig(stream=sys.stdout, format='%(asctime)s | %(name)s | %(levelname)s | %(message)s', level=logging.DEBUG)
     with NewsDatabase('SteamNews.db') as db:
         publish(db)

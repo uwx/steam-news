@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "checkJs": true,
+        "allowJs": true,
+        "lib": ["DOM", "ESNext"],
+        "outDir": "out"
+    },
+    "include": [
+        "*.js",
+        "*.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

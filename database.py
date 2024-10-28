@@ -4,7 +4,7 @@ import time
 
 from typing import Iterable, NamedTuple, Optional
 
-from SteamNewsTypes import NewsItem
+from steam_news_types import NewsItem
 
 logger = logging.getLogger(__name__)
 
