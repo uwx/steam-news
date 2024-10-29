@@ -5,9 +5,14 @@
 // http://dalkescientific.com/Python/PyRSS2Gen.html
 
 import { Feed as RssFeed, Item as RssItem } from "feed";
-import * as fs from 'fs/promises';
+import * as fs from 'node:fs/promises';
+import fromAsync from 'array-from-async';
+import path from "node:path";
 
-function gen_rss_feed(rssitems: RssItem[]) {
+import { parse as bbParse } from './bbcode.js';
+import { NewsDatabase, NewsItem } from "./database.js";
+
+function generateRssFeed(rssitems: RssItem[]) {
     const pdate = new Date();
     const lbdate = new Date(Math.max(...rssitems.map(e => e.published!.getTime())));
 
@@ -38,21 +43,21 @@ function gen_rss_feed(rssitems: RssItem[]) {
 const FEEDTYPE_HTML = 0;
 const FEEDTYPE_BBCODE = 1;
 
-async function news_item_to_rss_item(newsitem: Selectable<NewsItem>, db: NewsDatabase) {
+async function newsItemToRssItem(newsitem: NewsItem, db: NewsDatabase) {
     let content: string;
 
-    if (newsitem['feed_type'] == FEEDTYPE_BBCODE)
-        content = convertBBCodeToHTML(newsitem['contents']!);
+    if (newsitem.feed_type == FEEDTYPE_BBCODE)
+        content = convertBBCodeToHTML(newsitem.contents!);
     else
-        content = newsitem['contents']!;
+        content = newsitem.contents!;
 
     // Add the title of the game to the article title,
     //   but only if not present according to 'in' or difflib.get_close_matches.
     // get_close_matches isn't great for longer titles given the split() but /shrug
     // There are other libraries for fuzzy matching but difflib is built in...
-    let games = await db.getSourceNamesAndAppIdForItem(newsitem['gid']);
+    let games = await fromAsync(db.getGames(newsitem.source_appids));
 
-    if (!await db.canFetchGames(games.map(e => e.appid))) {
+    if (!await db.canFetchGames(newsitem.source_appids)) {
         console.log(`Skipping article ${newsitem.title} because appid is not to be fetched now`);
         return undefined;
     }
@@ -62,7 +67,7 @@ async function news_item_to_rss_item(newsitem: Selectable<NewsItem>, db: NewsDat
         return undefined;
     }
 
-    let rsstitle = newsitem['title'];
+    let rsstitle = newsitem.title;
     if (games.length > 1)
         rsstitle = `[Multiple] ${rsstitle}`;
     else if (!rsstitle.includes(games[0].name))
@@ -136,11 +141,6 @@ span.bb_spoiler:hover > span {
 }
 `;
 
-import { parse as bbParse } from './bbcode.js';
-import { NewsDatabase, NewsItem } from "./database.js";
-import { Selectable } from "kysely";
-import path from "node:path";
-
 function convertBBCodeToHTML(text: string) {
     return bbParse(text)
         .replace(/{(STEAM_CLAN_IMAGE|STEAM_CLAN_LOC_IMAGE)}/g, match => IMG_REPLACEMENTS[match]);
@@ -158,7 +158,7 @@ function convertBBCodeToHTML(text: string) {
 // https://cdn.akamai.steamstatic.com/steamcommunity/public/images/clans/27766192/45e4984a51cabcc390f9e1c1d2345da97f744851.gif
 
 // sort of makes me wonder if these are interchangable...
-const IMG_REPLACEMENTS = {
+const IMG_REPLACEMENTS: Record<string, string> = {
     '{STEAM_CLAN_IMAGE}': 'https://clan.akamai.steamstatic.com/images/',
     '{STEAM_CLAN_LOC_IMAGE}': 'https://cdn.akamai.steamstatic.com/steamcommunity/public/images/clans',
 };
@@ -167,9 +167,9 @@ export async function publish(db: NewsDatabase, output_path?: string) {
     output_path ??= 'steam_news.xml';
 
     console.log('Generating RSS feed...')
-    const rssitems = (await Promise.all((await db.getNewsRows()).map(async row => await news_item_to_rss_item(row, db))))
+    const rssitems = (await Promise.all((await fromAsync(db.getNewsRows())).map(async row => await newsItemToRssItem(row, db))))
         .filter(e => e !== undefined);
-    const feed = gen_rss_feed(rssitems);
+    const feed = generateRssFeed(rssitems);
 
     console.log(`Writing to ${output_path}...`);
 

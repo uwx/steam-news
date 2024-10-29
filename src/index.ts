@@ -1,10 +1,11 @@
 import 'dotenv/config';
 
 import { parse } from 'ts-command-line-args';
-import { NewsDatabase, NewsItem } from './database.js';
+import { Game, NewsDatabase, NewsItem } from './database.js';
 import * as fs from 'fsxt';
 import { Selectable } from 'kysely';
 import { publish } from './news_publisher.js';
+import fromAsync from 'array-from-async';
 
 // Hardcoded list of AppIDs that return news related to Steam as a whole (not games)
 // Mileage may vary. Use app_id_discovery.py to maybe find more of these...
@@ -26,7 +27,7 @@ async function seedDatabase(id_or_vanity: string, db: NewsDatabase, minimum_play
     // https://steamcommunity.com/dev/apikey
     const url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env["STEAM_WEB_API_KEY"]}&steamid=${id_or_vanity}&format=json`;
 
-    const [newsids, games_full] = await get_app_ids_from_url(url);
+    const [newsids, games_full] = await getAppIdsFromUrl(url);
 
     // Also add the hardcoded ones...
     for (const [k, v] of Object.entries(STEAM_APPIDS)) {
@@ -91,7 +92,7 @@ interface GetOwnedGamesResult_Game {
 
 let applist: Record<number, string> | undefined = undefined;
 
-async function get_app_ids_from_url(url: string) {
+async function getAppIdsFromUrl(url: string) {
     // """Given a steam profile url, produce a dict of
     // appids to names of games owned (appids are strings)
     // Note that the profile in question needs to be public for this to work!"""
@@ -99,8 +100,8 @@ async function get_app_ids_from_url(url: string) {
 
     if (!applist) {
         console.log('Downloading steam app list...');
-        const res: GetAppListResult = await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/')
-            .then(e => e.json())
+        const res = (await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/')
+            .then(e => e.json())) as GetAppListResult;
 
         applist = Object.fromEntries(res.applist.apps.map(e => [e.appid, e.name]));
     }
@@ -111,7 +112,7 @@ async function get_app_ids_from_url(url: string) {
     const res = await fetch(url);
 
     if (res.ok) {
-        const j: GetOwnedGamesResult = await res.json();
+        const j = (await res.json()) as GetOwnedGamesResult;
         console.log(j);
 
         for (const ge of j.response.games) {
@@ -156,12 +157,12 @@ interface NewsError {
     error: string;
 }
 
-function get_expires_datetime_from_response(response: Response) {
-    const exp = response.headers.get('Expires')
-    return exp ? new Date(exp) : new Date();
+function getExpiresDateFromResponse(response: Response) {
+    const exp = response.headers.get('Expires');
+    return exp != null ? new Date(exp) : new Date();
 }
 
-async function get_news_for_appid(appid: number, filter_feed_names?: string): Promise<News | NewsError> {
+async function getNewsForAppId(appid: string | number, filter_feed_names?: string): Promise<News | NewsError> {
     // """Get news for the given appid as a dict"""
     const url = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?format=json&maxlength=0&count=25&appid=${appid}${filter_feed_names ? `&feeds=${filter_feed_names}` : ""}`
 
@@ -172,14 +173,14 @@ async function get_news_for_appid(appid: number, filter_feed_names?: string): Pr
         }
 
         // Get value of 'expires' header as a datetime obj
-        const exdt = get_expires_datetime_from_response(response)
+        const exdt = getExpiresDateFromResponse(response)
         // Parse the JSON
-        const news: News = await response.json();
+        const news = (await response.json()) as News;
         // Add the expire time to the group as a plain unix time
         news['expires'] = Math.round(exdt.getTime()/1000)
         // Decorate each news item and the group with its "true" appid
         for (const newsitem of news['appnews']['newsitems']) {
-            newsitem['realappid'] = appid;
+            newsitem['realappid'] = Number(appid);
         }
 
         return news;
@@ -190,7 +191,7 @@ async function get_news_for_appid(appid: number, filter_feed_names?: string): Pr
 
 const sleep = (sec: number) => new Promise(resolve => setTimeout(resolve, sec*1000));
 
-function is_news_old(ned: AppNewsItem, oldDays: number = 30) {
+function isNewsOld(ned: AppNewsItem, oldDays: number = 30) {
     // """Is this news item more than 30 days old?"""
     const newsdt = new Date(ned['date']*1000)
     let thirtyago = new Date();
@@ -198,14 +199,14 @@ function is_news_old(ned: AppNewsItem, oldDays: number = 30) {
     return newsdt < thirtyago;
 }
 
-function save_recent_news(news: News, db: NewsDatabase) {
+function saveRecentNews(news: News, db: NewsDatabase) {
     // """Given a single news dict from getNewsForAppID,
     // save all "recent" news items to the DB"""
     db.updateExpireTime(news['appnews']['appid'], news['expires']);
 
     let current_entries = 0;
     for (const ned of news['appnews']['newsitems']) {
-        if (!is_news_old(ned)) {
+        if (!isNewsOld(ned)) {
             db.insertNewsItem(ned);
             current_entries += 1;
         }
@@ -214,7 +215,7 @@ function save_recent_news(news: News, db: NewsDatabase) {
     return current_entries;
 }
 
-async function get_all_recent_news(newsids: Record<number, string>, db: NewsDatabase, filter_feed_names: string | undefined) {
+async function getAllRecentNews(newsids: (readonly [appid: string, game: Game])[], db: NewsDatabase, filter_feed_names: string | undefined) {
     // """Given a dict of appids to names, store all "recent" items, respecting the cache"""
     let cache_hits = 0;
     let new_hits = 0;
@@ -222,31 +223,28 @@ async function get_all_recent_news(newsids: Record<number, string>, db: NewsData
     let idx = 0;
     let total_current = 0;
 
-    const newsidsLen = Object.entries(newsids).length;
-    for (const [aidString, name] of Object.entries(newsids)) {
-        const aid = Number(aidString);
-
+    for (const [aid, name] of newsids) {
         idx += 1;
         if (await db.isNewsCached(aid)) {
-            console.log(`[${idx}/${newsidsLen}] Cache for ${aid}: ${name} still valid!`);
+            console.log(`[${idx}/${newsids.length}] Cache for ${aid}: ${name} still valid!`);
             cache_hits += 1
             continue
         }
 
-        const news = await get_news_for_appid(aid, filter_feed_names);
+        const news = await getNewsForAppId(aid, filter_feed_names);
         if ('appnews' in news) { // success
-            const cur_entries = save_recent_news(news, db);
+            const cur_entries = saveRecentNews(news, db);
             new_hits += 1;
             if (cur_entries) {
-                console.log(`[${idx}/${newsidsLen}] Fetched ${aid}: ${name} OK; ${cur_entries} current items`);
+                console.log(`[${idx}/${newsids.length}] Fetched ${aid}: ${name} OK; ${cur_entries} current items`);
                 total_current += cur_entries;
             } else {
-                console.log(`[${idx}/${newsidsLen}] Fetched ${aid}: ${name} OK; nothing current`);
+                console.log(`[${idx}/${newsids.length}] Fetched ${aid}: ${name} OK; nothing current`);
             }
             await sleep(0.25);
         } else {
             fails += 1;
-            console.error(`[${idx}/${newsidsLen}] ${aid}: ${name} fetch error: ${news.error}`);
+            console.error(`[${idx}/${newsids.length}] ${aid}: ${name} fetch error: ${news.error}`);
             await sleep(1);
         }
     }
@@ -292,8 +290,8 @@ export const args = parse<IArguments>({
         // not implemented!
     } else { // editing is mutually exclusive w/ fetch & publish
         if (args.fetch) {
-            const newsids = await db.getFetchGames();
-            await get_all_recent_news(newsids, db, args.filter_feed_names)
+            const newsids = await fromAsync(db.getFetchGames());
+            await getAllRecentNews(newsids, db, args.filter_feed_names)
         }
 
         if (args.publish) {

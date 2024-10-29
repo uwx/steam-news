@@ -5,98 +5,54 @@
 
 import type { ColumnType, Insertable, InsertObject, Selectable } from "kysely";
 
-export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
-    ? ColumnType<S, I | undefined, U>
-    : ColumnType<T, T | undefined, T>;
-
-export interface ExpireTime {
-    appid: number | null;
-    unixseconds: Generated<number>;
-}
+import { GetOptions, Level } from 'level';
+import fromAsync from 'array-from-async';
 
 export interface Game {
-    appid: number;
+    appid: string;
     name: string;
-    shouldFetch: Generated<number>;
+    shouldFetch: boolean;
+
+    expiry_unix_seconds?: number;
 }
 
 export interface NewsItem {
-    appid: number;
-    author: string | null;
-    contents: string | null;
-    date: Generated<number>;
-    feed_type: number | null;
-    feedlabel: string | null;
-    feedname: string | null;
     gid: string;
-    is_external_url: number | null;
     title: string;
-    url: string | null;
-}
-
-export interface NewsSource {
+    url: string;
+    is_external_url: boolean;
+    author: string;
+    contents: string;
+    feedlabel: string;
+    date: number;
+    feedname: string;
+    feed_type: number; // 0=HTML, 1=BBCODE
     appid: number;
-    gid: string;
+    tags: string[];
+    realappid: number;
+
+    source_appids: number[];
 }
 
-export interface Database {
-    ExpireTimes: ExpireTime;
-    Games: Game;
-    NewsItems: NewsItem;
-    NewsSources: NewsSource;
-}
-
-import SQLite from 'better-sqlite3';
-import { Kysely, Migrator, sql, SqliteDialect } from 'kysely';
 import type { AppNewsItem } from "./index.js";
 
-async function openDb(path: string) {
-    const dialect = new SqliteDialect({
-        database: new SQLite(path),
-    });
-
-    const db = new Kysely<Database>({
-        dialect,
-    });
-
-    // const migrationFolder = new URL('./migrations', import.meta.url).pathname
-
-    const migrator = new Migrator({
-        db,
-        provider: {
-            async getMigrations() {
-                return {
-                    '1_start': await import('./migrations/1_start.js')
-                };
-            },
-        }
-    })
-    console.log(await migrator.migrateToLatest());
-
-    return db;
-}
-
 export class NewsDatabase {
-    private db?: Kysely<Database>;
+    private db?: Level;
     constructor(private path: string) {}
 
     async open() {
         if (!this.db) {
             console.log(`Opening DB @ ${this.path}`);
-            this.db = await openDb(this.path);
+            this.db = new Level('steam_news.ldb', { valueEncoding: 'json' });
             // await sql`'PRAGMA foreign_keys = ON'`.execute(this.db);
         }
     }
 
     async close(optimize = true) {
         if (this.db) {
-            if (optimize) {
-                console.log('Optimizing DB before close...');
-                await sql`PRAGMA optimize`.execute(this.db);
-            }
-            console.log(`Closing DB @ ${this.path}`);
-            this.db.destroy();
+            await this.db.close();
             this.db = undefined;
+            this.sublevels = {};
         }
     }
 
@@ -104,190 +60,180 @@ export class NewsDatabase {
         await this.close();
     }
 
+    private sublevels: Record<string, any> = {};
+
+    private get games() {
+        if (!this.db) throw new Error('DB not initialized');
+
+        return this.db.sublevel<string, Game>('games', {
+            keyEncoding: 'utf8',
+            valueEncoding: 'json'
+        });
+    }
+
+    private get newsItems() {
+        if (!this.db) throw new Error('DB not initialized');
+
+        return this.db.sublevel<string, NewsItem>('news_items', {
+            keyEncoding: 'utf8',
+            valueEncoding: 'json'
+        });
+    }
+
     // Given a dict of appid: name, populate them in the database.
     async addGames(games: Record<number, string>) {
         if (!this.db) throw new Error('DB not initialized');
 
-        const result = await this.db
-            .insertInto('Games')
-                .values(
-                Object.entries(games).map(([appid, name]) => ({
-                    appid: Number(appid),
-                    name
-                }))
-            )
-            .onConflict(oc => oc
-                .column('appid')
-                .doUpdateSet(eb => ({
-                    name: eb.ref('excluded.name')
-                }))
-            )
-            .executeTakeFirstOrThrow();
+        await this.games.batch(Object.entries(games).map(([appid, game]) => ({
+            type: 'put',
+            key: appid,
+            value: {
+                appid,
+                name: game,
+                shouldFetch: true,
+                expiry_unix_seconds: undefined,
+            }
+        })));
 
-        console.log(`Added ${result.numInsertedOrUpdatedRows} new games to be fetched.`);
+        console.log('addGames');
     }
 
     async removeGamesNotInList(appids: (string | number)[]) {
         if (!this.db) throw new Error('DB not initialized');
 
-        const result = await this.db
-            .deleteFrom('Games')
-            .where('appid', 'not in', appids.map(e => Number(e)))
-            .executeTakeFirstOrThrow();
+        appids = appids.map(e => String(e));
 
-        console.log(`Removed ${result.numDeletedRows} games no longer owned by the user.`);
+        await this.games.batch(
+            (await fromAsync(this.games.keys()))
+                .filter(appid => !appids.includes(appid))
+                .map(appid => ({
+                    type: 'del',
+                    key: appid
+                }))
+        );
+
+        console.log('removeGamesNotInList');
     }
 
-    async getGamesLike(name: string) {
+    async *getGamesLike(name: string) {
         if (!this.db) throw new Error('DB not initialized');
 
-        name = name.trim().replace(/%/g, '')
+        name = name.trim().replace(/%/g, '').toLowerCase();
 
-        if (name) {
-            return await this.db
-                .selectFrom('Games')
-                .where('name', 'like', `%${name}%`)
-                .orderBy('name')
-                .selectAll()
-                .execute();
-        } else {
-            return await this.db
-                .selectFrom('Games')
-                .orderBy('name')
-                .selectAll()
-                .execute();
+        for await (const [appid, game] of this.games.iterator()) {
+            if (game.name.toLowerCase().includes(name)) {
+                yield game;
+            }
         }
     }
 
     async setFetchingIds(appidsAndShouldFetch: [appid: number, shouldFetch: boolean][]) {
         if (!this.db) throw new Error('DB not initialized');
 
-        let rc = 0n;
+        const appidsDict = Object.fromEntries(appidsAndShouldFetch);
 
-        let res = await this.db
-            .updateTable('Games')
-            .set('shouldFetch', 1)
-            .where('appid', 'in', appidsAndShouldFetch.filter(([appid, shouldFetch]) => shouldFetch).map(([appid, shouldFetch]) => appid))
-            .executeTakeFirstOrThrow();
+        for await (const [appid, game] of this.games.iterator()) {
+            if (appid in appidsDict) {
+                game.shouldFetch = appidsDict[appid];
+                await this.games.put(appid, game);
+            }
+        }
 
-        rc += res.numChangedRows ?? res.numUpdatedRows;
+        console.log('setFetchingIds');
+    }
 
-        res = await this.db
-            .updateTable('Games')
-            .set('shouldFetch', 0)
-            .where('appid', 'in', appidsAndShouldFetch.filter(([appid, shouldFetch]) => !shouldFetch).map(([appid, shouldFetch]) => appid))
-            .executeTakeFirstOrThrow();
-
-        rc += res.numChangedRows ?? res.numUpdatedRows;
-
-        console.log(`Set shouldFetch for ${rc} games.`)
+    async getOrDefault<K, V>(level: { get(key: K, options: GetOptions<K, V>): Promise<V> }, key: K, options: GetOptions<K, V> = {}) {
+        try {
+            return await level.get(key, options);
+        } catch (err) {
+            if (!((typeof err === 'object' || typeof err === 'function') && err !== null && 'code' in err && err.code === 'LEVEL_NOT_FOUND')) {
+                throw err;
+            }
+            return undefined;
+        }
     }
 
     async canFetchGames(appids: (string | number)[]) {
         if (!this.db) throw new Error('DB not initialized');
 
-        const a = this.db
-            .selectFrom('Games')
-            .where('appid', 'in', appids.map(e => Number(e)))
-            .where('shouldFetch', '!=', 0)
-            .select(['appid']);
+        for (const appid of appids) {
+            const game = await this.getOrDefault<string, Game>(this.games, String(appid));
+            if (game?.shouldFetch) return true;
+        }
 
-        // console.log(a.compile());
-
-        return (await a
-            .execute()).length == appids.length;
+        return false;
     }
 
-    async getFetchGames() {
+    async *getFetchGames() {
         if (!this.db) throw new Error('DB not initialized');
 
-        return Object.fromEntries(
-            (await this.db
-                .selectFrom('Games')
-                .where('shouldFetch', '!=', 0)
-                .select(['appid', 'name'])
-                .execute())
-                .map(e => [e.appid, e.name])
-        );
+        for await (const [appid, game] of this.games.iterator()) {
+            if (game.shouldFetch) {
+                yield [appid, game] as const;
+            }
+        }
+
+        console.log('getFetchGames');
     }
 
-    async updateExpireTime(appid: number, expires: number) {
-        if (!this.db) throw new Error('DB not initialized');
-
-        await this.db
-            .insertInto('ExpireTimes')
-            .values({
-                appid,
-                unixseconds: expires
-            })
-            .onConflict(oc => oc
-                .column('appid')
-                .doUpdateSet({ unixseconds: expires })
-            )
-            .execute();
+    async *getGames(appids: (string | number)[]): AsyncGenerator<Game> {
+        for (const appid of appids) {
+            const game = this.getOrDefault<string, Game>(this.games, String(appid));
+            // @ts-expect-error fuck you
+            if (game) yield game;
+        }
     }
 
-    async isNewsCached(appid: number) {
+    async updateExpireTime(appid: string | number, expires: number) {
         if (!this.db) throw new Error('DB not initialized');
 
-        const exptime = await this.db
-            .selectFrom('ExpireTimes')
-            .where('appid', '=', appid)
-            .select('unixseconds')
-            .executeTakeFirst();
+        const game = await this.games.get(String(appid));
+        game.expiry_unix_seconds = Math.max(game.expiry_unix_seconds ?? 0, expires);
+        await this.games.put(String(appid), game);
+    }
+
+    async isNewsCached(appid: string | number) {
+        if (!this.db) throw new Error('DB not initialized');
+
+        const game = await this.games.get(String(appid));
 
         // TODO maybe use datetime.timestamp() & now() instead?
-        return exptime !== undefined && (Date.now() / 1000) < exptime.unixseconds;
+        return game.expiry_unix_seconds !== undefined && (Date.now() / 1000) < game.expiry_unix_seconds;
     }
 
     async insertNewsItem(ned: AppNewsItem) {
         if (!this.db) throw new Error('DB not initialized');
 
-        await this.db
-            .insertInto('NewsItems')
-            .values({
-                appid: ned.appid,
-                author: ned.author,
-                contents: ned.contents,
-                date: ned.date,
-                feed_type: ned.feed_type,
-                feedlabel: ned.feedlabel,
-                feedname: ned.feedname,
-                gid: ned.gid,
-                is_external_url: ned.is_external_url ? 1 : 0,
-                title: ned.title,
-                url: ned.url,
-            })
-            .onConflict(oc => oc.doNothing())
-            .execute();
+        const existingNewsItem = await this.getOrDefault<string, NewsItem>(this.newsItems, ned.gid);
 
-        await this.db
-            .insertInto('NewsSources')
-            .values({ appid: ned.realappid, gid: ned.gid })
-            .onConflict(oc => oc.doNothing())
-            .execute();
+        const ned1 = {...ned};
+        // @ts-expect-error
+        delete ned1.realappid;
+
+        await this.newsItems.put(ned.gid, {
+            ...(existingNewsItem ? existingNewsItem : {}),
+            ...ned1,
+            source_appids: [...new Set([...(existingNewsItem?.source_appids ?? []), ned.realappid])]
+        });
     }
 
-    async getNewsRows(): Promise<Selectable<NewsItem>[]> {
+    async *getNewsRows() {
         if (!this.db) throw new Error('DB not initialized');
 
-        return await this.db
-            .selectFrom('NewsItems')
-            .where('date', '>=', sql<number>`strftime('%s', 'now', '-30 day')`)
-            .orderBy('date desc')
-            .selectAll()
-            .execute();
-    }
+        let thirtyago = new Date();
+        thirtyago.setDate(thirtyago.getDate() - 30);
 
-    async getSourceNamesAndAppIdForItem(gid: string): Promise<{ appid: number; name: string; }[]> {
-        if (!this.db) throw new Error('DB not initialized');
+        const newsItems = this.newsItems;
 
-        return await this.db
-            .selectFrom('NewsSources')
-            .where('gid', '=', gid)
-            .rightJoin('Games', 'Games.appid', 'NewsSources.appid')
-            .orderBy('Games.appid')
-            .select(['Games.name', 'Games.appid'])
-            .execute();
+        const result = await fromAsync((async function*() {
+            for await (const [gid, newsItem] of newsItems.iterator()) {
+                if (new Date(newsItem.date * 1000) >= thirtyago) {
+                    yield newsItem;
+                }
+            }
+        })());
+
+        // sort by date desc
+        return result.sort((a, b) => b.date - a.date);
     }
 }

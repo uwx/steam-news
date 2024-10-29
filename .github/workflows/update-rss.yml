@@ -65,8 +65,8 @@ jobs:
       - name: Setup SteamNews.db cache
         uses: actions/cache/restore@v3
         with:
-          path: SteamNews.db
-          key: db-
+          path: steam_news.ldb
+          key: db2-
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -107,6 +107,6 @@ jobs:
       - name: Cache SteamNews.db database
         uses: actions/cache/save@v3
         with:
-          path: SteamNews.db
-          key: db-${{ hashFiles('SteamNews.db') }}
+          path: steam_news.ldb
+          key: db2-${{ hashFiles('SteamNews.db') }}
 
