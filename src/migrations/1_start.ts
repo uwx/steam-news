@@ -10,7 +10,7 @@ export async function up(db: Kysely<Database>): Promise<void> {
         .execute();
 
     await db.schema.createTable('ExpireTimes')
-        .addColumn('appid', 'integer', (cb) => cb.primaryKey().references('Games(appid)').onDelete('cascade').onUpdate('cascade'))
+        .addColumn('appid', 'integer', (cb) => cb.primaryKey().references('Games.appid').onDelete('cascade').onUpdate('cascade'))
         .addColumn('unixseconds', 'integer', (cb) => cb.notNull().defaultTo(0))
         .ifNotExists()
         .execute();
@@ -31,8 +31,8 @@ export async function up(db: Kysely<Database>): Promise<void> {
         .execute();
 
     await db.schema.createTable('NewsSources')
-        .addColumn('gid', 'text', cb => cb.notNull().references('NewsItems(gid)').onDelete('cascade').onUpdate('cascade'))
-        .addColumn('appid', 'integer', cb => cb.notNull().references('Games(appid)').onDelete('cascade').onUpdate('cascade'))
+        .addColumn('gid', 'text', cb => cb.notNull().references('NewsItems.gid').onDelete('cascade').onUpdate('cascade'))
+        .addColumn('appid', 'integer', cb => cb.notNull().references('Games.appid').onDelete('cascade').onUpdate('cascade'))
         .addPrimaryKeyConstraint('NewsSources_pk', ['appid', 'gid'])
         .ifNotExists()
         .execute();
