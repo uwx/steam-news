@@ -223,10 +223,10 @@ async function getAllRecentNews(newsids: (readonly [appid: string, game: Game])[
     let idx = 0;
     let total_current = 0;
 
-    for (const [aid, name] of newsids) {
+    for (const [aid, game] of newsids) {
         idx += 1;
         if (await db.isNewsCached(aid)) {
-            console.log(`[${idx}/${newsids.length}] Cache for ${aid}: ${name} still valid!`);
+            console.log(`[${idx}/${newsids.length}] Cache for ${aid}: ${game.name} still valid!`);
             cache_hits += 1
             continue
         }
@@ -236,15 +236,15 @@ async function getAllRecentNews(newsids: (readonly [appid: string, game: Game])[
             const cur_entries = saveRecentNews(news, db);
             new_hits += 1;
             if (cur_entries) {
-                console.log(`[${idx}/${newsids.length}] Fetched ${aid}: ${name} OK; ${cur_entries} current items`);
+                console.log(`[${idx}/${newsids.length}] Fetched ${aid}: ${game.name} OK; ${cur_entries} current items`);
                 total_current += cur_entries;
             } else {
-                console.log(`[${idx}/${newsids.length}] Fetched ${aid}: ${name} OK; nothing current`);
+                console.log(`[${idx}/${newsids.length}] Fetched ${aid}: ${game.name} OK; nothing current`);
             }
             await sleep(0.25);
         } else {
             fails += 1;
-            console.error(`[${idx}/${newsids.length}] ${aid}: ${name} fetch error: ${news.error}`);
+            console.error(`[${idx}/${newsids.length}] ${aid}: ${game.name} fetch error: ${news.error}`);
             await sleep(1);
         }
     }
