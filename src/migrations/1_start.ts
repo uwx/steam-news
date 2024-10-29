@@ -15,7 +15,7 @@ export async function up(db: Kysely<Database>): Promise<void> {
         .ifNotExists()
         .execute();
 
-    await db.schema.createTable('NewsItems')
+    const query = db.schema.createTable('NewsItems')
         .addColumn('gid', 'text', cb => cb.notNull().primaryKey())
         .addColumn('title', 'text', cb => cb.notNull())
         .addColumn('url', 'text')
@@ -28,7 +28,11 @@ export async function up(db: Kysely<Database>): Promise<void> {
         .addColumn('feed_type', 'integer')
         .addColumn('appid', 'integer', cb => cb.notNull())
         .ifNotExists()
-        .execute();
+        .compile();
+
+    console.log(query);
+
+    await db.executeQuery(query);
 
     await db.schema.createTable('NewsSources')
         .addColumn('gid', 'text', cb => cb.notNull().references('NewsItems.gid').onDelete('cascade').onUpdate('cascade'))
