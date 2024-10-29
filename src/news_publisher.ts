@@ -20,6 +20,12 @@ function gen_rss_feed(rssitems: RssItem[]) {
         copyright: 'All rights reserved',
         // lastBuildDate: lbdate,
         ttl: 60*24,
+        language: "en",
+        feedLinks: {
+            rss: 'https://uwx.github.io/steam-news/steam_news.xml',
+            json: 'https://uwx.github.io/steam-news/steam_news.json',
+            atom: 'https://uwx.github.io/steam-news/steam_news.atom',
+        },
     }); // TODO should ttl get a value?
 
     for (const item of rssitems) {
@@ -82,6 +88,7 @@ async function news_item_to_rss_item(newsitem: Selectable<NewsItem>, db: NewsDat
         title: rsstitle,
         link: newsitem['url']!,
         description: sources + content,
+        content: sources + content,
         author: newsitem['author'] ? [{ name: newsitem['author'] }] : undefined,
         id: newsitem['gid'],
         date: new Date(newsitem['date']*1000),
