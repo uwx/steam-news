@@ -127,6 +127,17 @@ export class NewsDatabase {
         console.log(`Added ${result.numInsertedOrUpdatedRows} new games to be fetched.`);
     }
 
+    async removeGamesNotInList(appids: (string | number)[]) {
+        if (!this.db) throw new Error('DB not initialized');
+
+        const result = await this.db
+            .deleteFrom('Games')
+            .where('appid', 'not in', appids.map(e => Number(e)))
+            .executeTakeFirstOrThrow();
+
+        console.log(`Removed ${result.numDeletedRows} games no longer owned by the user.`);
+    }
+
     async getGamesLike(name: string) {
         if (!this.db) throw new Error('DB not initialized');
 

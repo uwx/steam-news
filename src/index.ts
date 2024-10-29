@@ -32,6 +32,9 @@ async function seedDatabase(id_or_vanity: string, db: NewsDatabase, minimum_play
     for (const [k, v] of Object.entries(STEAM_APPIDS)) {
         newsids[Number(k)] = v;
     }
+
+    await db.removeGamesNotInList(Object.keys(newsids));
+
     await db.addGames(newsids);
 
     // set should_fetch to whether last played <6mo ago and >minimum_playtime
