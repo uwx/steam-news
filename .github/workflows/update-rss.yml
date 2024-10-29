@@ -78,7 +78,7 @@ jobs:
 
       - name: Add profile games
         run: |
-          pnpx tsx src/index.ts --add_profile_games 76561198043308224 --minimum_playtime 180 --last_6_months_only
+          pnpx tsx src/index.ts --add_profile_games 76561198043308224 --last_6_months_only
         env:
           STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 
