@@ -270,7 +270,7 @@ export class NewsDatabase {
         return await this.db
             .selectFrom('NewsSources')
             .where('gid', '=', gid)
-            .innerJoin('Games', 'Games.appid', 'NewsSources.appid')
+            .rightJoin('Games', 'Games.appid', 'NewsSources.appid')
             .orderBy('Games.appid')
             .select(['Games.name', 'Games.appid'])
             .execute();
