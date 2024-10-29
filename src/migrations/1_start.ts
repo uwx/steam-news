@@ -23,7 +23,7 @@ export async function up(db: Kysely<Database>): Promise<void> {
         .addColumn('author', 'text')
         .addColumn('contents', 'text')
         .addColumn('feedlabel', 'text')
-        .addColumn('date', 'integer', cb => cb.notNull().defaultTo(sql`strftime('%s')`))
+        .addColumn('date', 'integer', cb => cb.notNull().defaultTo(sql`(strftime('%s'))`))
         .addColumn('feedname', 'text')
         .addColumn('feed_type', 'integer')
         .addColumn('appid', 'integer', cb => cb.notNull())
