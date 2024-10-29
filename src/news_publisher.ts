@@ -78,10 +78,10 @@ async function news_item_to_rss_item(newsitem: Selectable<NewsItem>, db: NewsDat
         date: new Date(newsitem['date']*1000),
         published: new Date(newsitem['date']*1000),
         category: [{name: source}],
-        enclosure: games.length == 1 ? {
-            title: games[0].name,
-            url: `https://store.steampowered.com/app/${games[0].appid}/`
-        } : undefined
+        //enclosure: games.length == 1 ? {
+        //    title: games[0].name,
+        //    url: `https://store.steampowered.com/app/${games[0].appid}/`
+        //} : undefined
     } satisfies RssItem;
 }
 
