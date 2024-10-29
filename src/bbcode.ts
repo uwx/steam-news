@@ -55,7 +55,7 @@ export function parse(post: string, crlf2br_default = true, img_style: string = 
     let urlstart = -1;      // beginning of the URL if zero or greater (ignored if -1)
 
     // aceptable BBcode tags, optionally prefixed with a slash
-    const tagname_re = /^\/?(?:b|i|u|pre|center|samp|code|colou?r|size|noparse|url|link|s(trike)?|q|(block)?quote|img|[uo]?list|li|spoiler|previewyoutube|table|t[rhd]|h[1-6])$/i;
+    const tagname_re = /^\/?(?:b|i|u|pre|center|samp|code|colou?r|size|noparse|url|link|s(trike)?|q|(block)?quote|img|[uo]?list|li|spoiler|previewyoutube|table|t[rhd]|h[123456])$/i;
 
     // color names or hex color
     const color_re = /^(:?black|silver|gray|white|maroon|red|purple|fuchsia|green|lime|olive|yellow|navy|blue|teal|aqua|#(?:[0-9a-f]{3})?[0-9a-f]{3})$/i;

@@ -190,11 +190,11 @@ async function get_news_for_appid(appid: number, filter_feed_names?: string): Pr
 
 const sleep = (sec: number) => new Promise(resolve => setTimeout(resolve, sec*1000));
 
-function is_news_old(ned: AppNewsItem) {
+function is_news_old(ned: AppNewsItem, oldDays: number = 30) {
     // """Is this news item more than 30 days old?"""
     const newsdt = new Date(ned['date']*1000)
     let thirtyago = new Date();
-    thirtyago.setDate(thirtyago.getDate() - 30);
+    thirtyago.setDate(thirtyago.getDate() - oldDays);
     return newsdt < thirtyago;
 }
 
