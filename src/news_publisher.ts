@@ -44,8 +44,17 @@ async function news_item_to_rss_item(newsitem: Selectable<NewsItem>, db: NewsDat
     //   but only if not present according to 'in' or difflib.get_close_matches.
     // get_close_matches isn't great for longer titles given the split() but /shrug
     // There are other libraries for fuzzy matching but difflib is built in...
-    let games = await db.getSourceNamesAndAppIdForItem(newsitem['gid'])
-    if (games.length == 0) games = [{ name: 'Unknown?', appid: 0 }];
+    let games = await db.getSourceNamesAndAppIdForItem(newsitem['gid']);
+
+    if (!await db.canFetchGames(games.map(e => e.appid))) {
+        console.log(`Skipping article ${newsitem.title} because appid is not to be fetched now`);
+        return undefined;
+    }
+
+    if (games.length == 0) {
+        console.log(`Skipping article ${newsitem.title} because games.length == 0`);
+        return undefined;
+    }
 
     let rsstitle = newsitem['title'];
     if (games.length > 1)
@@ -151,8 +160,10 @@ export async function publish(db: NewsDatabase, output_path?: string) {
     output_path ??= 'steam_news.xml';
 
     console.log('Generating RSS feed...')
-    const rssitems = await Promise.all((await db.getNewsRows()).map(async row => await news_item_to_rss_item(row, db)));
-    const feed = gen_rss_feed(rssitems)
+    const rssitems = (await Promise.all((await db.getNewsRows()).map(async row => await news_item_to_rss_item(row, db))))
+        .filter(e => e !== undefined);
+    const feed = gen_rss_feed(rssitems);
+
     console.log(`Writing to ${output_path}...`);
 
     const outputPathNoExtension = output_path.slice(0, -path.extname(output_path).length);

@@ -183,6 +183,16 @@ export class NewsDatabase {
         console.log(`Set shouldFetch for ${rc} games.`)
     }
 
+    async canFetchGames(appids: (string | number)[]) {
+        if (!this.db) throw new Error('DB not initialized');
+
+        return (await this.db
+            .selectFrom('Games')
+            .where('appid', 'in', appids.map(e => Number(e)))
+            .where('shouldFetch', '!=', 0)
+            .execute()).length == appids.length;
+    }
+
     async getFetchGames() {
         if (!this.db) throw new Error('DB not initialized');
 
