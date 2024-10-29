@@ -114,3 +114,5 @@ venv.bak/
 
 #js
 node_modules
+
+/_site
