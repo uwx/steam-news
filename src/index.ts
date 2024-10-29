@@ -163,7 +163,7 @@ function get_expires_datetime_from_response(response: Response) {
 
 async function get_news_for_appid(appid: number, filter_feed_names?: string): Promise<News | NewsError> {
     // """Get news for the given appid as a dict"""
-    const url = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?format=json&maxlength=0&count=10&appid=${appid}${filter_feed_names ? `&feeds=${filter_feed_names}` : ""}`
+    const url = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?format=json&maxlength=0&count=25&appid=${appid}${filter_feed_names ? `&feeds=${filter_feed_names}` : ""}`
 
     try {
         const response = await fetch(url);
