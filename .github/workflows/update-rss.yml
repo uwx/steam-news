@@ -108,5 +108,5 @@ jobs:
         uses: actions/cache/save@v3
         with:
           path: steam_news.ldb
-          key: db2-${{ hashFiles('SteamNews.db') }}
+          key: db2-${{ hashFiles('steam_news.ldb/*') }}
 
