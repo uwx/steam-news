@@ -167,7 +167,7 @@ export async function publish(db: NewsDatabase, output_path?: string) {
     output_path ??= 'steam_news.xml';
 
     console.log('Generating RSS feed...')
-    const rssitems = (await Promise.all((await fromAsync(db.getNewsRows())).map(async row => await newsItemToRssItem(row, db))))
+    const rssitems = (await Promise.all((await db.getNewsRows()).map(async row => await newsItemToRssItem(row, db))))
         .filter(e => e !== undefined);
     const feed = generateRssFeed(rssitems);
 

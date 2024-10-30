@@ -227,7 +227,7 @@ async function getAllRecentNews(newsids: (readonly [appid: string, game: Game])[
         idx += 1;
         if (await db.isNewsCached(aid)) {
             console.log(`[${idx}/${newsids.length}] Cache for ${aid}: ${game.name} still valid!`);
-            cache_hits += 1
+            cache_hits += 1;
             continue
         }
 

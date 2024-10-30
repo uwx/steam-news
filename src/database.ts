@@ -217,7 +217,7 @@ export class NewsDatabase {
         });
     }
 
-    async *getNewsRows() {
+    async getNewsRows() {
         if (!this.db) throw new Error('DB not initialized');
 
         let thirtyago = new Date();
