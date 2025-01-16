@@ -51,7 +51,7 @@ export function newsItemToRssItem(newsitem: GetNewsForApp.NewsItem, appids: stri
     let rsstitle = newsitem.title;
     if (appids.length > 1)
         rsstitle = `[Multiple] ${rsstitle}`;
-    else if (!rsstitle.includes(applist[appids[0]].name))
+    else if (appids.length > 0 && !rsstitle.includes(applist[appids[0]].name))
         rsstitle = `[${applist[appids[0]].name}] ${rsstitle}`
     // else
     // game title is in article title, do nothing
