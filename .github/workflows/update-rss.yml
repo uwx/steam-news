@@ -76,16 +76,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Add profile games
-        run: |
-          pnpx tsx src/index.ts --add_profile_games 76561198043308224 --last_6_months_only
-        env:
-          STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
-
       - name: Update RSS feed
         run: |
           mkdir _site
-          pnpx tsx src/index.ts --verbose --fetch --publish _site/steam_news.xml --filter_feed_names steam_community_announcements
+          pnpx tsx src_v2/index.ts --verbose --profile 76561198043308224 --last_6_months_only --publish _site/steam_news.xml --filter_feed_names steam_community_announcements
         env:
           STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
 

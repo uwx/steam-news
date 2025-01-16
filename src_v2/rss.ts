@@ -5,14 +5,11 @@
 // http://dalkescientific.com/Python/PyRSS2Gen.html
 
 import { Feed as RssFeed, type Item as RssItem } from "feed";
-import * as fs from 'node:fs/promises';
-import fromAsync from 'array-from-async';
-import path from "node:path";
 
 import { parse as bbParse } from './bbcode.js';
-import type { NewsDatabase, NewsItem } from "./database.js";
+import type { GetAppList, GetNewsForApp } from "./types.js";
 
-function generateRssFeed(rssitems: RssItem[]) {
+export function generateRssFeed(rssitems: RssItem[]) {
     const pdate = new Date();
     const lbdate = new Date(Math.max(...rssitems.map(e => e.published!.getTime())));
 
@@ -43,7 +40,7 @@ function generateRssFeed(rssitems: RssItem[]) {
 const FEEDTYPE_HTML = 0;
 const FEEDTYPE_BBCODE = 1;
 
-async function newsItemToRssItem(newsitem: NewsItem, db: NewsDatabase) {
+export function newsItemToRssItem(newsitem: GetNewsForApp.NewsItem, appids: string[], applist: Record<string, GetAppList.App>) {
     let content: string;
 
     if (newsitem.feed_type === FEEDTYPE_BBCODE)
@@ -51,53 +48,38 @@ async function newsItemToRssItem(newsitem: NewsItem, db: NewsDatabase) {
     else
         content = newsitem.contents!;
 
-    // Add the title of the game to the article title,
-    //   but only if not present according to 'in' or difflib.get_close_matches.
-    // get_close_matches isn't great for longer titles given the split() but /shrug
-    // There are other libraries for fuzzy matching but difflib is built in...
-    let games = await fromAsync(db.getGames(newsitem.source_appids));
-
-    if (!await db.canFetchGames(newsitem.source_appids)) {
-        console.log(`Skipping article ${newsitem.title} because appid is not to be fetched now`);
-        return undefined;
-    }
-
-    if (games.length === 0) {
-        console.log(`Skipping article ${newsitem.title} because games.length == 0`);
-        return undefined;
-    }
-
     let rsstitle = newsitem.title;
-    if (games.length > 1)
+    if (appids.length > 1)
         rsstitle = `[Multiple] ${rsstitle}`;
-    else if (!rsstitle.includes(games[0].name))
-        rsstitle = `[${games[0].name}] ${rsstitle}`
-    // else game title is in article title, do nothing
+    else if (!rsstitle.includes(applist[appids[0]].name))
+        rsstitle = `[${applist[appids[0]].name}] ${rsstitle}`
+    // else
+    // game title is in article title, do nothing
 
-    let source = newsitem['feedlabel']
+    let source = newsitem.feedlabel
     if (!source) {
         //patch over missing feedname in Steam News;
         // seems to be the only news source w/o feedlabels?
-        if (newsitem['feedname'] == 'steam_community_blog')
+        if (newsitem.feedname === 'steam_community_blog')
             source = 'Steam Community Blog'
         else
             //shrug.
-            source = newsitem['feedname'] || 'Unknown Source'
+            source = newsitem.feedname || 'Unknown Source'
     }
 
     const sources = `<p><i>Via <b>${source}</b> for ${
-        games.map(game => `<a href="https://store.steampowered.com/app/${game.appid}/">${game.name}</a>`).join(', ')
+        appids.map(appid => `<a href="https://store.steampowered.com/app/${appid}/">${applist[appid].name}</a>`).join(', ')
     }</i></p>\n`;
 
     return {
         title: rsstitle,
-        link: newsitem['url']!,
+        link: newsitem.url!,
         description: sources + content,
         content: sources + content,
-        author: newsitem['author'] ? [{ name: newsitem['author'] }] : undefined,
-        id: newsitem['gid'],
-        date: new Date(newsitem['date']*1000),
-        published: new Date(newsitem['date']*1000),
+        author: newsitem.author ? [{ name: newsitem.author }] : undefined,
+        id: newsitem.gid,
+        date: new Date(newsitem.date*1000),
+        published: new Date(newsitem.date*1000),
         category: [{name: source}],
         //enclosure: games.length == 1 ? {
         //    title: games[0].name,
@@ -162,28 +144,3 @@ const IMG_REPLACEMENTS: Record<string, string> = {
     '{STEAM_CLAN_IMAGE}': 'https://clan.akamai.steamstatic.com/images/',
     '{STEAM_CLAN_LOC_IMAGE}': 'https://cdn.akamai.steamstatic.com/steamcommunity/public/images/clans',
 };
-
-export async function publish(db: NewsDatabase, output_path?: string) {
-    output_path ??= 'steam_news.xml';
-
-    console.log('Generating RSS feed...')
-    const rssitems = (await Promise.all((await db.getNewsRows()).map(async row => await newsItemToRssItem(row, db))))
-        .filter(e => e !== undefined);
-    const feed = generateRssFeed(rssitems);
-
-    console.log(`Writing to ${output_path}...`);
-
-    const outputPathNoExtension = output_path.slice(0, -path.extname(output_path).length);
-
-    await fs.writeFile(output_path, feed.rss2().replace(
-        '<?xml version="1.0" encoding="utf-8"?>',
-        '<?xml version="1.0" encoding="utf-8"?>\n<?xml-stylesheet href="style.xsl" type="text/xsl"?>'
-    ))
-
-    await fs.writeFile(outputPathNoExtension + '.atom', feed.atom1());
-    await fs.writeFile(outputPathNoExtension + '.json', feed.json1());
-
-    await fs.copyFile('style.xsl', path.join(path.dirname(output_path), 'style.xsl'))
-
-    console.log('Published!');
-}
