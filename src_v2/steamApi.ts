@@ -23,10 +23,17 @@ export async function getNewsForAppId(appid: string | number, filterFeedNames?: 
 
 export async function getAppList() {
     console.log('Downloading steam app list...');
-    const res = (await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/')
-        .then(e => e.json())) as GetAppList.Response;
 
-    const applist = Object.fromEntries(res.applist.apps.map(e => [e.appid, e]));
+    const url = new URL('https://api.steampowered.com/ISteamApps/GetAppList/v2/');
+
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+    }
+
+    const applist = Object.fromEntries(
+        (await response.json() as GetAppList.Response).applist.apps.map(e => [e.appid, e])
+    );
 
     return applist;
 }
