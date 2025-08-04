@@ -38,25 +38,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
-
-      - name: Keepalive Workflow
-        # You may pin to the exact commit or the version.
-        # uses: gautamkrishnar/keepalive-workflow@790c7f09285a59b09bb578c85e271c6ff2af97c4
-        uses: gautamkrishnar/keepalive-workflow@1.1.0
-        with:
-          # # GitHub access token with Repo scope
-          # gh_token: ${{ secrets.GH_TOKEN }} # optional, default is ${{ github.token }}
-          # # Commit message used while committing to the repo
-          commit_message: Automated commit [ci skip] [skip ci] # optional, default is Automated commit by Keepalive Workflow to keep the repository active
-          # # Username used while committing to the repo
-          # committer_username: # optional, default is gkr-bot
-          # # Email id used while committing to the repo
-          # committer_email: # optional, default is gkr-bot@tuta.io
-          # # Time elapsed from the last commit to trigger a new automated commit (in days)
-          # time_elapsed: # optional, default is 50
-          # # Defines if the workflow pushes the changes automatically
-          # auto_push: # optional, default is true
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -67,7 +49,7 @@ jobs:
           version: 9.15.0+sha512.76e2379760a4328ec4415815bcd6628dee727af3779aaa4c914e3944156c4299921a89f976381ee107d41f12cfa4b66681ca9c718f0668fa0831ed4c6d8ba56c
 
       - name: Setup SteamNews.db cache
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: steam_news.ldb
           key: db2-
@@ -91,20 +73,21 @@ jobs:
         uses: actions/configure-pages@v4
 
       - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v2.0.0
+        uses: actions/upload-pages-artifact@v3
         with:
           # Upload entire repository
           path: '_site'
 
       - name: Deploy GitHub Pages site
-        uses: actions/deploy-pages@v3.0.1
+        uses: actions/deploy-pages@v4
 
       - name: Vacuum SQLite database
         run: sqlite3 SteamNews.db "VACUUM;"
 
       - name: Cache SteamNews.db database
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         with:
           path: steam_news.ldb
           key: db2-${{ hashFiles('steam_news.ldb/*') }}
+
 
